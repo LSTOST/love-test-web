@@ -31,9 +31,9 @@ export default function Quiz() {
   // 核心功能：调用后端 API
   const submitToBackend = async (finalAnswers) => {
     setLoading(true);
-    try {
+try {
       // 发送网络请求 (Fetch)
-      const response = await fetch('http://127.0.0.1:8000/submit', {
+      const response = await fetch('https://love-test-web-production.up.railway.app/submit', { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,7 +43,6 @@ export default function Quiz() {
           answers: finalAnswers
         }),
       });
-
       const data = await response.json();
       console.log("后端返回的数据:", data);
       setResult(data); // 把结果存起来展示
