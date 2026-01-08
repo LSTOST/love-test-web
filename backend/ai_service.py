@@ -2,7 +2,7 @@ from openai import OpenAI
 
 # ================= OpenRouter 配置区域 =================
 # 1. 填入你的 Key (sk-or-v1-开头)
-MY_API_KEY = "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"
+MY_API_KEY = "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"
 
 # 2. 初始化客户端
 CLIENT = OpenAI(
