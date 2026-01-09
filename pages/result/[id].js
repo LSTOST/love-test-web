@@ -1,32 +1,34 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 export default function ResultPage() {
   const router = useRouter();
   const { id } = router.query;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const BACKEND_URL = 'https://love-test-web-production.up.railway.app'; 
+  const BACKEND_URL = '[https://love-test-web-production.up.railway.app](https://love-test-web-production.up.railway.app)'; 
 
-  // 轮询逻辑 (保持不变)
   useEffect(() => {
     if (!id) return;
     const fetchData = () => {
         fetch(`${BACKEND_URL}/result/${id}`)
         .then(res => res.json())
         .then(resultData => {
+            // 如果 AI 还没生成完（还是 teaser），就不要停止 loading 或者显示等待状态
+            // 这里简单处理：只要拿到数据就显示
             setData(resultData);
             setLoading(false);
         })
         .catch(err => console.error(err));
     };
-
-    fetchData(); 
-    const interval = setInterval(fetchData, 3000); 
-    return () => clearInterval(interval); 
+    fetchData();
+    // 简单的轮询，防止一开始数据没出来
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
   }, [id]);
 
-  // 模拟支付逻辑 (保持不变)
+  // 模拟支付
   const handlePay = async () => {
       const res = await fetch(`${BACKEND_URL}/mock_pay`, {
           method: 'POST',
@@ -34,131 +36,94 @@ export default function ResultPage() {
           body: JSON.stringify({ test_id: parseInt(id) })
       });
       const resData = await res.json();
-      if (resData.status === 'paid') {
-          alert("支付成功！邀请码已生成");
-          window.location.reload(); 
-      }
+      if (resData.status === 'paid') window.location.reload();
   };
 
-  // --- 新增：复制邀请功能的逻辑 ---
-  const handleCopyInvite = () => {
-      // 1. 获取当前网站的域名 (比如 https://xxx.vercel.app)
-      const origin = window.location.origin;
-      // 2. 拼接出 User B 的专属入口链接
-      const inviteLink = `${origin}/quiz?invite_code=${data.invite_code}`;
-      
-      // 3. 准备一段好听的邀请文案
-      const shareText = `亲爱的，我刚刚做了一个超准的「AI 恋爱契合度测试」💑 \n测完了只有一半报告，快来填一下你的那部分，看看咱们的默契度有多少！\n\n👉 点击链接直接开始：\n${inviteLink}`;
-
-      // 4. 写入剪贴板
-      navigator.clipboard.writeText(shareText).then(() => {
-          alert("邀请链接已复制！\n快去微信粘贴发给你的 TA 吧~");
-      });
-  };
-
-  if (loading) return <div style={{padding:'50px', textAlign:'center'}}>加载中...</div>;
+  if (loading) return <div style={{padding:'50px', textAlign:'center', color:'#888'}}>🔍 正在绘制关系图谱...</div>;
   if (!data) return <div>404 Not Found</div>;
 
-  // --- 状态 1: 未支付 (保持不变) ---
+  // --- 场景 1 & 2: 未支付或等待中 (简单复用之前的逻辑) ---
   if (data.payment_status === 'unpaid') {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-            <h1 style={{ color: '#ccc' }}>你的性格画像已生成</h1>
-            <div style={{ filter: 'blur(8px)', userSelect: 'none', margin: '30px 0', opacity: 0.6 }}>
-                <div style={{background: '#eee', height: '20px', marginBottom: '10px', width: '80%', margin:'10px auto'}}></div>
-                <div style={{background: '#eee', height: '20px', marginBottom: '10px', width: '90%', margin:'10px auto'}}></div>
-                <div style={{background: '#eee', height: '20px', marginBottom: '10px', width: '60%', margin:'10px auto'}}></div>
-                <p>这里包含关于你的深度心理分析...</p>
-            </div>
-            <div style={{ background: '#fff', padding: '30px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-                <h3>解锁完整合盘报告</h3>
-                <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
-                    包含：双方性格雷达图 + AI 深度匹配分析 + 邀请伴侣免费测试
-                </p>
-                <button onClick={handlePay} style={{ width: '100%', padding: '16px', background: '#FF6B6B', color: 'white', border: 'none', borderRadius: '50px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255, 107, 107, 0.4)' }}>
-                    立即解锁 (¥19.9)
-                </button>
-            </div>
-        </div>
-      );
+      return <div style={{padding:'40px', textAlign:'center'}}>
+          <h1>画像生成中...</h1>
+          <button onClick={handlePay} style={{padding:'15px 30px', background:'#FF6B6B', color:'white', border:'none', borderRadius:'30px', fontSize:'18px'}}>解锁报告 (¥19.9)</button>
+      </div>;
   }
-
-  // --- 状态 2: 等待中 (界面大升级！) ---
   if (data.payment_status === 'paid' && !data.is_finished) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ marginTop: '30px', marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '28px', color: '#333' }}>🔓 解锁成功！</h1>
-                <p style={{ color: '#666', fontSize: '16px' }}>只差最后一步啦</p>
-            </div>
-
-            {/* 邀请卡片区域 */}
-            <div style={{ background: 'white', padding: '30px', borderRadius: '20px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', border: '1px solid #f0f0f0' }}>
-                <p style={{ fontSize: '14px', color: '#999', marginBottom: '10px' }}>邀请对方完成测试，即可查看合盘报告</p>
-                
-                {/* 醒目的邀请码 */}
-                <div style={{ background: '#F5F7FA', padding: '15px', borderRadius: '12px', marginBottom: '25px', letterSpacing: '2px' }}>
-                    <span style={{ color: '#666', fontSize: '12px' }}>专属邀请码：</span>
-                    <strong style={{ fontSize: '24px', color: '#333', marginLeft: '10px' }}>{data.invite_code}</strong>
-                </div>
-
-                {/* 核心行动按钮 */}
-                <button 
-                    onClick={handleCopyInvite}
-                    style={{ 
-                        width: '100%', 
-                        padding: '16px', 
-                        background: '#25D366', // 微信绿，暗示发给微信好友
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '12px', 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        cursor: 'pointer', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        gap: '8px',
-                        boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)'
-                    }}
-                >
-                    <span>🚀 复制链接发给 TA</span>
-                </button>
-                
-                <p style={{ fontSize: '12px', color: '#ccc', marginTop: '15px' }}>
-                    对方点击链接即可直接开始，无需手动输入邀请码
-                </p>
-            </div>
-
-            {/* 等待状态动画 */}
-            <div style={{ marginTop: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                <div className="loading-dots" style={{ fontSize: '24px' }}>⏳</div>
-                <p style={{ color: '#FF6B6B', fontSize: '14px', fontWeight: '500' }}>
-                    正在等待对方提交... 
-                </p>
-                <p style={{ color: '#999', fontSize: '12px' }}>
-                    (完成后本页面会自动刷新，请勿关闭)
-                </p>
-            </div>
-        </div>
-      );
+      return <div style={{padding:'40px', textAlign:'center'}}>
+          <h1>🔓 已解锁</h1>
+          <p>邀请码: <strong style={{fontSize:'24px'}}>{data.invite_code}</strong></p>
+          <p>等待对方完成中...</p>
+      </div>;
   }
 
-  // --- 状态 3: 大结局 (保持不变) ---
-  const aiData = data.ai_result || {};
+  // --- 场景 3: 最终可视化报告 (核心修改) ---
+  const ai = data.ai_result || {};
+  // 构造雷达图数据
+  const radarData = ai.radar ? Object.keys(ai.radar).map(key => ({
+      subject: key,
+      A: ai.radar[key],
+      fullMark: 100
+  })) : [];
+
   return (
-    <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-      <h1 style={{ color: '#FF6B6B', fontSize: '32px', marginBottom: '10px' }}>💖 最终合盘报告</h1>
-      <div style={{ padding: '25px', background: '#fff', borderRadius: '16px', textAlign: 'left', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', marginTop: '20px' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#333', fontSize: '18px' }}>💡 深度情感分析</h3>
-        <p style={{ lineHeight: '1.8', color: '#555', fontSize: '15px', whiteSpace: 'pre-wrap' }}>{aiData.analysis}</p>
+    <div style={{ minHeight:'100vh', background:'#f5f7fa', paddingBottom:'40px', fontFamily:'sans-serif' }}>
+      
+      {/* 顶部卡片：关系定义 */}
+      <div style={{ background:'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)', padding:'40px 20px 80px', color:'white', textAlign:'center', borderBottomLeftRadius:'30px', borderBottomRightRadius:'30px' }}>
+          <div style={{ fontSize:'14px', opacity:0.8, letterSpacing:'2px', marginBottom:'10px' }}>AI 契合度检测</div>
+          <h1 style={{ fontSize:'48px', margin:'0', fontWeight:'800' }}>{ai.score || 88}%</h1>
+          <div style={{ fontSize:'24px', marginTop:'10px', fontWeight:'bold' }}>{ai.title || "灵魂伴侣"}</div>
       </div>
-      <div style={{ marginTop: '30px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-          {(aiData.tags || []).map((tag, index) => (
-            <span key={index} style={{ padding: '8px 20px', background: '#FF6B6B', color: 'white', borderRadius: '50px', fontSize: '14px', fontWeight: 'bold' }}>{tag}</span>
-          ))}
-        </div>
+
+      {/* 核心内容区：向上浮动，盖住背景 */}
+      <div style={{ maxWidth:'600px', margin:'-60px auto 0', padding:'0 20px' }}>
+          
+          {/* 卡片 1: 雷达图 */}
+          <div style={{ background:'white', borderRadius:'20px', padding:'20px', boxShadow:'0 10px 30px rgba(0,0,0,0.08)', marginBottom:'20px' }}>
+              <h3 style={{ textAlign:'center', color:'#333', margin:'0 0 20px' }}>📊 多维关系模型</h3>
+              <div style={{ width:'100%', height:'250px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                    <PolarGrid stroke="#eee" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#666', fontSize: 12 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar name="Match" dataKey="A" stroke="#FF6B6B" fill="#FF6B6B" fillOpacity={0.4} />
+                    </RadarChart>
+                </ResponsiveContainer>
+              </div>
+          </div>
+
+          {/* 卡片 2: 社交分享卡 (关系人格) */}
+          <div style={{ background:'url([https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?q=80&w=600&auto=format&fit=crop](https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?q=80&w=600&auto=format&fit=crop))', backgroundSize:'cover', borderRadius:'20px', padding:'30px', color:'white', textAlign:'center', marginBottom:'20px', position:'relative', overflow:'hidden' }}>
+              {/* 遮罩层，让文字更清晰 */}
+              <div style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.4)', zIndex:0 }}></div>
+              <div style={{ position:'relative', zIndex:1 }}>
+                  <div style={{ fontSize:'12px', opacity:0.8, marginBottom:'10px' }}>RELATIONSHIP PERSONA</div>
+                  <h2 style={{ fontSize:'28px', margin:'0 0 15px', fontFamily:'serif', fontStyle:'italic' }}>
+                      "{ai.title}"
+                  </h2>
+                  <p style={{ fontSize:'16px', lineHeight:'1.6', opacity:0.95 }}>
+                      {ai.card_text || "宇宙很大，能在同一个频率共振，本身就是一种奇迹。"}
+                  </p>
+                  <div style={{ marginTop:'20px', fontSize:'12px', opacity:0.7 }}>Love Test AI Generated</div>
+              </div>
+          </div>
+
+          {/* 卡片 3: 深度分析 (文本) */}
+          <div style={{ background:'white', borderRadius:'20px', padding:'25px', boxShadow:'0 5px 20px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ borderLeft:'4px solid #FF6B6B', paddingLeft:'10px', color:'#333' }}>💡 深度解读</h3>
+              <p style={{ lineHeight:'1.8', color:'#555', fontSize:'15px', whiteSpace:'pre-wrap' }}>
+                  {ai.analysis}
+              </p>
+          </div>
+
+          {/* 底部按钮 */}
+          <button style={{ width:'100%', marginTop:'30px', padding:'15px', background:'#333', color:'white', borderRadius:'15px', border:'none', fontSize:'16px', fontWeight:'bold' }}>
+              保存并分享结果 📸
+          </button>
+          <p style={{ textAlign:'center', color:'#ccc', fontSize:'12px', marginTop:'10px' }}>(请手动截图保存上方卡片)</p>
+
       </div>
     </div>
   );
