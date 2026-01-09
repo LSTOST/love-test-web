@@ -11,7 +11,7 @@
   "dependencies": {
     "next": "latest",
     "react": "latest",
+    "react-dom": "latest",
     "recharts": "^2.10.0"
-    "react-dom": "latest"
   }
 }
