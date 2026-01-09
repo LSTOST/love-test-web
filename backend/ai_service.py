@@ -10,8 +10,8 @@ load_dotenv()
 # --- 1. 配置 OpenRouter 客户端 ---
 # 确保你的 .env 文件里有 OPENROUTER_API_KEY
 CLIENT = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.environ.get("OPENROUTER_API_KEY")
+base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ.get("MY_API_KEY")
 )
 
 # --- 2. 选择模型 ---
