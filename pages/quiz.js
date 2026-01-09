@@ -4,21 +4,26 @@ import { questions } from '../data/mockQuestions';
 
 export default function Quiz() {
   const router = useRouter();
-  // 从网址获取邀请码 (比如 /quiz?invite_code=ABCD)
-  const { inviteCode } = router.query; 
+  
+  // --- 核心修复 1: 变量名必须和 URL 里的 ?invite_code 一模一样 ---
+  const { invite_code } = router.query; 
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [isUserB, setIsUserB] = useState(false);
 
-  // 检查是不是 User B
+  // --- 核心修复 2: 确保 Router 准备好后再判断身份 ---
   useEffect(() => {
-    if (inviteCode) {
-        setIsUserB(true);
-        console.log("当前身份: User B (伴侣), 邀请码:", inviteCode);
+    if (router.isReady) {
+        if (invite_code) {
+            setIsUserB(true);
+            console.log("✅ 识别到伴侣身份，邀请码:", invite_code);
+        } else {
+            console.log("👤 识别为新用户 (User A)");
+        }
     }
-  }, [inviteCode]);
+  }, [router.isReady, invite_code]);
 
   const currentQuestion = questions[currentStep];
   const progress = ((currentStep + 1) / questions.length) * 100;
@@ -36,17 +41,23 @@ export default function Quiz() {
 
   const submitToBackend = async (finalAnswers) => {
     setLoading(true);
-    const BACKEND_URL = 'https://love-test-web-production.up.railway.app'; // 你的真实地址
+    const BACKEND_URL = 'https://love-test-web-production.up.railway.app'; 
 
     try {
       let url, body;
 
-      if (isUserB) {
-          // --- User B 提交逻辑 ---
+      // 再次确认身份，防止 State 没更新
+      // 优先使用 isUserB，如果没检测到，再看一眼 router 里有没有 invite_code
+      const codeToUse = isUserB ? invite_code : router.query.invite_code;
+
+      if (codeToUse) {
+          // --- User B (伴侣) 提交逻辑 ---
+          console.log("正在提交 Part B...");
           url = `${BACKEND_URL}/submit_part_b`;
-          body = { invite_code: inviteCode, answers: finalAnswers };
+          body = { invite_code: codeToUse, answers: finalAnswers };
       } else {
-          // --- User A 提交逻辑 ---
+          // --- User A (发起人) 提交逻辑 ---
+          console.log("正在提交 Part A...");
           url = `${BACKEND_URL}/submit_part_a`;
           body = { user_id: "user_a_" + Date.now(), answers: finalAnswers };
       }
@@ -58,22 +69,22 @@ export default function Quiz() {
       });
       
       const data = await response.json();
-      console.log("提交成功:", data);
+      console.log("后端返回:", data);
 
       if (data.test_id) {
-          // 无论 A 还是 B，成功后都去结果页
+          // 成功！跳转结果页
           router.push(`/result/${data.test_id}`);
       } else if (data.status === 'already_finished') {
-          alert("这个邀请码已经使用过了！");
+          alert("这个邀请码已经使用过了！直接带你去看结果。");
           router.push(`/result/${data.test_id}`);
       } else {
-          alert("提交异常，请重试");
+          alert("提交异常，请检查网络");
           setLoading(false);
       }
 
     } catch (error) {
-      console.error("Error:", error);
-      alert("网络请求失败");
+      console.error("提交报错:", error);
+      alert("网络请求失败，请稍后重试");
       setLoading(false);
     }
   };
@@ -81,19 +92,24 @@ export default function Quiz() {
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
       <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '40px' }}>
-        <div style={{ width: `${progress}%`, height: '100%', background: isUserB ? '#333' : '#FF6B6B', borderRadius: '3px', transition: 'width 0.3s' }}></div>
+        <div style={{ width: `${progress}%`, height: '100%', background: isUserB ? '#25D366' : '#FF6B6B', borderRadius: '3px', transition: 'width 0.3s' }}></div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', marginTop: '100px' }}>
-          <h2>{isUserB ? "正在合并数据召唤 AI..." : "正在生成基础画像..."}</h2>
-          <p>请稍候片刻...</p>
+          {/* 根据身份显示不同的加载文案 */}
+          <h2>{isUserB || router.query.invite_code ? "正在合并数据召唤 AI..." : "正在生成基础画像..."}</h2>
+          <p style={{color: '#999'}}>AI 大脑正在飞速运转 🧠</p>
         </div>
       ) : (
         <>
           <div style={{ marginBottom: '10px' }}>
-             {/* 顶部提示身份 */}
-             {isUserB && <span style={{background: '#333', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '12px'}}>🤝 匹配模式</span>}
+             {/* 顶部标签：让你明确知道自己现在的身份 */}
+             {(isUserB || invite_code) && (
+                 <span style={{background: '#25D366', color: 'white', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold'}}>
+                    🤝 正在匹配 User A
+                 </span>
+             )}
           </div>
           <div style={{ marginBottom: '40px' }}>
             <span style={{ color: '#999', fontSize: '14px' }}>QUESTION {currentStep + 1} / {questions.length}</span>
@@ -117,7 +133,7 @@ export default function Quiz() {
                   color: '#444'
                 }}
               >
-                <span style={{ fontWeight: 'bold', marginRight: '10px', color: isUserB ? '#333' : '#FF6B6B' }}>{option.label}.</span>
+                <span style={{ fontWeight: 'bold', marginRight: '10px', color: (isUserB || invite_code) ? '#25D366' : '#FF6B6B' }}>{option.label}.</span>
                 {option.text}
               </button>
             ))}
