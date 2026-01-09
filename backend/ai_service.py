@@ -25,11 +25,10 @@ CLIENT = OpenAI(
 )
 
 # 4. 选择模型 (目前测试成功且免费的模型)
-# 推荐尝试 1：Gemini 1.5 Flash (速度极快，谷歌的轻量级战神，通常很稳)
-MODEL_NAME = "google/gemini-flash-1.5-8b:free"
+MODEL_NAME = "mistralai/mistral-7b-instruct:free"
 
-# 如果上面那个还不行，就用这个国产之光 (DeepSeek V3，非常聪明且免费版相对稳定)
-# MODEL_NAME = "deepseek/deepseek-chat:free"
+# 如果上面那个还不行，就用这个
+# MODEL_NAME = "microsoft/phi-3-mini-128k-instruct:free"
 
 def clean_json_response(content):
     """
