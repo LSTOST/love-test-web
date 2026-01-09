@@ -1,106 +1,59 @@
-// 1. 引入 Next.js 的 Link 组件（必须）
-import Link from 'next/link'; 
-// 引入 Head 组件是为了设置网页标题（推荐）
-import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { useState } from 'react';
 
 export default function Home() {
+  const router = useRouter();
+  const [inviteCode, setInviteCode] = useState('');
+
+  const startTest = () => {
+    // User A: 直接开始，没有邀请码
+    router.push('/quiz');
+  };
+
+  const joinTest = () => {
+    // User B: 带着邀请码去答题
+    if (!inviteCode.trim()) {
+        alert("请输入邀请码");
+        return;
+    }
+    router.push(`/quiz?invite_code=${inviteCode.toUpperCase()}`);
+  };
+
   return (
-    <div style={styles.container}>
-      <Head>
-        <title>AI 情侣关系测评</title>
-        <meta name="description" content="基于心理学与AI的情侣关系深度分析" />
-      </Head>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFF5F5', fontFamily: 'sans-serif', padding: '20px' }}>
+      <h1 style={{ color: '#FF6B6B', fontSize: '3rem', marginBottom: '10px' }}>Love Test AI ❤️</h1>
+      <p style={{ color: '#666', fontSize: '1.2rem', marginBottom: '50px', maxWidth: '500px', textAlign: 'center' }}>
+        基于心理学 + 大模型的深度关系分析。测测你们的灵魂契合度。
+      </p>
 
-      <main style={styles.main}>
-        {/* 标题 */}
-        <h1 style={styles.title}>
-          💗 情侣关系测评
-        </h1>
+      {/* 左边：创建测试 (User A) */}
+      <div style={{ background: 'white', padding: '30px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px', marginBottom: '20px', textAlign: 'center' }}>
+        <h3 style={{ margin: '0 0 20px 0', color: '#333' }}>🆕 发起测试</h3>
+        <button 
+          onClick={startTest}
+          style={{ width: '100%', padding: '15px', background: '#FF6B6B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          创建我们的关系档案
+        </button>
+      </div>
 
-        {/* 介绍文案 */}
-        <p style={styles.description}>
-          基于 OCEAN 大五人格与婚恋心理学量表。<br/>
-          通过 15 分钟趣味问答，生成你们专属的 AI 深度诊断报告。
-        </p>
-
-        <div style={styles.card}>
-          <p>
-            ✨ 探索你们的<strong>价值观契合度</strong><br/>
-            ✨ 识别潜在的<strong>沟通冲突点</strong><br/>
-            ✨ 获取 AI 定制的<strong>相处建议</strong>
-          </p>
-        </div>
-
-        {/* 2. 核心修改点：用 Link 包裹住按钮 */}
-        {/* href="/quiz" 对应的是 pages/quiz.js 文件 */}
-        <Link href="/quiz">
-          <button style={styles.button}>
-            开始测评 →
-          </button>
-        </Link>
-      </main>
+      {/* 右边：加入测试 (User B) */}
+      <div style={{ background: 'white', padding: '30px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+        <h3 style={{ margin: '0 0 20px 0', color: '#333' }}>🤝 我有邀请码</h3>
+        <input 
+          type="text" 
+          placeholder="输入 6 位邀请码"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          style={{ width: '100%', padding: '12px', border: '2px solid #eee', borderRadius: '10px', marginBottom: '15px', fontSize: '16px', boxSizing: 'border-box', textAlign: 'center', textTransform: 'uppercase' }}
+        />
+        <button 
+          onClick={joinTest}
+          style={{ width: '100%', padding: '15px', background: '#333', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          开始匹配
+        </button>
+      </div>
     </div>
   );
 }
-
-// 下面是简单的样式（你可以保留你原来的，或者用这个美化版）
-const styles = {
-  container: {
-    minHeight: '100vh',
-    padding: '0 2rem',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
-    fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
-  },
-  main: {
-    padding: '4rem 0',
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
-  },
-  title: {
-    margin: 0,
-    lineHeight: 1.15,
-    fontSize: '3.5rem',
-    color: '#333',
-    marginBottom: '20px',
-  },
-  description: {
-    lineHeight: 1.5,
-    fontSize: '1.2rem',
-    color: '#666',
-    maxWidth: '600px',
-    marginBottom: '30px',
-  },
-  card: {
-    padding: '1.5rem',
-    textAlign: 'left',
-    color: 'inherit',
-    textDecoration: 'none',
-    border: '1px solid #eaeaea',
-    borderRadius: '10px',
-    transition: 'color 0.15s ease, border-color 0.15s ease',
-    maxWidth: '500px',
-    marginBottom: '40px',
-    backgroundColor: '#fff',
-    lineHeight: '1.8',
-  },
-  button: {
-    padding: '16px 32px',
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: 'white',
-    backgroundColor: '#FF6B6B', // 比较温馨的情侣色
-    border: 'none',
-    borderRadius: '50px',
-    cursor: 'pointer',
-    boxShadow: '0 4px 14px 0 rgba(255, 107, 107, 0.39)',
-    transition: 'background 0.2s',
-  }
-};
