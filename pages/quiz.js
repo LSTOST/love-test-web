@@ -4,26 +4,59 @@ import { questions } from '../data/mockQuestions';
 
 export default function Quiz() {
   const router = useRouter();
-  
-  // --- 核心修复 1: 变量名必须和 URL 里的 ?invite_code 一模一样 ---
   const { invite_code } = router.query; 
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [isUserB, setIsUserB] = useState(false);
+  
+  // --- 新增：控制加载文案的状态 ---
+  const [loadingText, setLoadingText] = useState("正在建立加密连接...");
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
-  // --- 核心修复 2: 确保 Router 准备好后再判断身份 ---
+  // 模拟 AI 分析的步骤文案
+  const loadingMessages = [
+      "正在上传双方潜意识数据...",
+      "AI 正在构建你们的心理画像...", 
+      "正在比对 16 种人格维度的契合度...",
+      "检测到深层价值观共鸣，正在深入分析...",
+      "正在生成情感建议与相处之道...",
+      "报告生成完毕，正在最后排版..."
+  ];
+
   useEffect(() => {
     if (router.isReady) {
         if (invite_code) {
             setIsUserB(true);
-            console.log("✅ 识别到伴侣身份，邀请码:", invite_code);
-        } else {
-            console.log("👤 识别为新用户 (User A)");
         }
     }
   }, [router.isReady, invite_code]);
+
+  // --- 新增：加载动画逻辑 ---
+  useEffect(() => {
+      if (loading) {
+          let step = 0;
+          // 1. 进度条跑起来
+          const timer = setInterval(() => {
+              setLoadingProgress(old => {
+                  if (old >= 95) return 95; // 卡在 95% 等待真正跳转
+                  return old + 1.5; // 每 100ms 走一点
+              });
+          }, 100);
+
+          // 2. 文案变起来 (每 2.5 秒换一句话)
+          const textTimer = setInterval(() => {
+              step = (step + 1) % loadingMessages.length;
+              setLoadingText(loadingMessages[step]);
+          }, 2500);
+
+          return () => {
+              clearInterval(timer);
+              clearInterval(textTimer);
+          };
+      }
+  }, [loading]);
 
   const currentQuestion = questions[currentStep];
   const progress = ((currentStep + 1) / questions.length) * 100;
@@ -40,24 +73,19 @@ export default function Quiz() {
   };
 
   const submitToBackend = async (finalAnswers) => {
-    setLoading(true);
+    setLoading(true); // 开始播放动画
+    setLoadingText(loadingMessages[0]); // 重置文案
+    
     const BACKEND_URL = 'https://love-test-web-production.up.railway.app'; 
 
     try {
       let url, body;
-
-      // 再次确认身份，防止 State 没更新
-      // 优先使用 isUserB，如果没检测到，再看一眼 router 里有没有 invite_code
       const codeToUse = isUserB ? invite_code : router.query.invite_code;
 
       if (codeToUse) {
-          // --- User B (伴侣) 提交逻辑 ---
-          console.log("正在提交 Part B...");
           url = `${BACKEND_URL}/submit_part_b`;
           body = { invite_code: codeToUse, answers: finalAnswers };
       } else {
-          // --- User A (发起人) 提交逻辑 ---
-          console.log("正在提交 Part A...");
           url = `${BACKEND_URL}/submit_part_a`;
           body = { user_id: "user_a_" + Date.now(), answers: finalAnswers };
       }
@@ -69,13 +97,15 @@ export default function Quiz() {
       });
       
       const data = await response.json();
-      console.log("后端返回:", data);
 
       if (data.test_id) {
-          // 成功！跳转结果页
-          router.push(`/result/${data.test_id}`);
+          setLoadingProgress(100); // 瞬间拉满
+          setLoadingText("✅ 完成！正在跳转...");
+          // 稍微停顿一下让用户看到 100%
+          setTimeout(() => {
+              router.push(`/result/${data.test_id}`);
+          }, 500);
       } else if (data.status === 'already_finished') {
-          alert("这个邀请码已经使用过了！直接带你去看结果。");
           router.push(`/result/${data.test_id}`);
       } else {
           alert("提交异常，请检查网络");
@@ -84,27 +114,49 @@ export default function Quiz() {
 
     } catch (error) {
       console.error("提交报错:", error);
-      alert("网络请求失败，请稍后重试");
+      alert("网络请求失败");
       setLoading(false);
     }
   };
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '40px' }}>
-        <div style={{ width: `${progress}%`, height: '100%', background: isUserB ? '#25D366' : '#FF6B6B', borderRadius: '3px', transition: 'width 0.3s' }}></div>
-      </div>
+      
+      {/* 顶部进度条 (答题时显示) */}
+      {!loading && (
+        <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '40px' }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: isUserB ? '#25D366' : '#FF6B6B', borderRadius: '3px', transition: 'width 0.3s' }}></div>
+        </div>
+      )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', marginTop: '100px' }}>
-          {/* 根据身份显示不同的加载文案 */}
-          <h2>{isUserB || router.query.invite_code ? "正在合并数据召唤 AI..." : "正在生成基础画像..."}</h2>
-          <p style={{color: '#999'}}>AI 大脑正在飞速运转 🧠</p>
+        <div style={{ textAlign: 'center', marginTop: '80px', padding: '0 20px' }}>
+          {/* 动态 Emoji */}
+          <div style={{ fontSize: '60px', marginBottom: '30px', animation: 'bounce 1s infinite' }}>🧠</div>
+          
+          {/* 动态文案 */}
+          <h2 style={{ color: '#333', fontSize: '20px', minHeight: '50px', transition: 'all 0.3s' }}>
+            {loadingText}
+          </h2>
+          
+          {/* 加载进度条 */}
+          <div style={{ width: '100%', height: '10px', background: '#f0f0f0', borderRadius: '5px', marginTop: '20px', overflow: 'hidden' }}>
+             <div style={{ 
+                 width: `${loadingProgress}%`, 
+                 height: '100%', 
+                 background: 'linear-gradient(90deg, #FF6B6B, #FF8E53)', 
+                 borderRadius: '5px',
+                 transition: 'width 0.1s linear'
+             }}></div>
+          </div>
+          
+          <p style={{ color: '#999', fontSize: '12px', marginTop: '15px' }}>
+            (深度分析约需 15-30 秒，请勿关闭页面)
+          </p>
         </div>
       ) : (
         <>
           <div style={{ marginBottom: '10px' }}>
-             {/* 顶部标签：让你明确知道自己现在的身份 */}
              {(isUserB || invite_code) && (
                  <span style={{background: '#25D366', color: 'white', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold'}}>
                     🤝 正在匹配 User A
@@ -140,6 +192,14 @@ export default function Quiz() {
           </div>
         </>
       )}
+      
+      {/* 简单的 CSS 动画 */}
+      <style jsx>{`
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+      `}</style>
     </div>
   );
 }
