@@ -24,11 +24,8 @@ CLIENT = OpenAI(
     }
 )
 
-# 4. 选择模型 (目前测试成功且免费的模型)
-MODEL_NAME = "mistralai/mistral-7b-instruct:free"
-
-# 如果上面那个还不行，就用这个
-# MODEL_NAME = "microsoft/phi-3-mini-128k-instruct:free"
+# 4. 选择模型
+MODEL_NAME = "deepseek/deepseek-chat"
 
 def clean_json_response(content):
     """
