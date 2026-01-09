@@ -1,54 +1,56 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from schemas import UserAnswers, AnalysisResult
-from scoring import calculate_scores, generate_traits
-# 1. 新增：引入 AI 服务模块
-from ai_service import generate_love_report 
+from pydantic import BaseModel
+from typing import Dict, Any
+
+# --- 关键修改：导入正确的函数名 get_analysis ---
+from ai_service import get_analysis 
 
 app = FastAPI()
 
-origins = [
-    "*"
-]
-
+# 配置 CORS，允许前端跨域访问
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # 生产环境建议改为你的具体前端域名
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# 定义前端传来的数据格式
+class SubmitRequest(BaseModel):
+    user_id: str
+    answers: Dict[str, str]
+
 @app.get("/")
-def read_root():
-    return {"message": "AI Love Test Backend is Running!"}
+def home():
+    return {"message": "Backend is running!"}
 
-@app.post("/submit", response_model=AnalysisResult)
-def submit_quiz(submission: UserAnswers):
-    print(f"收到新答卷: {submission.answers}")
-    
-    # 1. 计算维度分
-    scores = calculate_scores(submission.answers)
-    
-    # 2. 生成人格标签
-    traits = generate_traits(scores)
-    
-    # 3. 模拟总分
-    total_score = 88 
-    
-    # ==========================================
-    # 4. 新增：呼叫 AI 生成报告
-    # ==========================================
-    # 注意：这会花费几秒钟，所以前端会有个 loading 转圈圈
-    ai_report_text = generate_love_report(traits, scores)
-    
-    # 我们把 AI 写的报告临时放在 traits 列表的第一个位置传回去
-    # (或者我们应该修改 schemas.py 增加一个字段，但为了省事，
-    # 我们先把它加进 traits 列表里，前端展示时会把它显示出来)
-    traits.insert(0, ai_report_text) 
+@app.post("/submit")
+def submit_test(request: SubmitRequest):
+    try:
+        print(f"收到新答卷: {request.answers}")
+        
+        # --- 关键修改：调用 get_analysis ---
+        # 以前是 generate_love_report(request.answers)
+        ai_result = get_analysis(request.answers)
+        
+        # 简单的原始分数计算 (示例逻辑)
+        raw_score = 88  # 这里可以加你自己的计分逻辑
+        
+        return {
+            "status": "success",
+            "user_id": request.user_id,
+            "raw_score": raw_score,
+            # 将 AI 返回的结构直接透传给前端
+            # AI 返回的是 { "analysis": "...", "tags": [...] }
+            "traits": ai_result 
+        }
 
-    return {
-        "dimensions": scores,
-        "traits": traits, # 这里现在包含了 AI 的长文报告
-        "raw_score": total_score
-    }
+    except Exception as e:
+        print(f"处理出错: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)
