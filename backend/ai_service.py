@@ -50,67 +50,62 @@ def clean_json_response(content):
         return content
 
 def get_analysis(data_input):
-    """
-    核心函数：调用 AI 进行分析，并返回结构化的 JSON 数据 (包含 analysis 和 tags)
-    """
-    print(f"🚀 正在调用 AI... 模型: {MODEL_NAME}")
-    
-    try:
-        # --- 构造 Prompt (提示词) ---
-        prompt = f"""
-        背景：这是一对情侣（或潜在伴侣）的性格测试问卷回答。
-        数据：{data_input}
-
-        请你扮演一位温暖、睿智且富有洞察力的情感心理咨询师，**直接与这对情侣对话**（使用“你们”、“你”这样的第二人称，绝对不要使用“他们”、“受试者”这样的第三人称）。
-
-        请分析他们的契合度，并按以下 JSON 格式返回：
-        {{
-            "analysis": "这里写一段300字左右的分析。语气要像面对面咨询一样亲切。例如：'从回答来看，你们在价值观上非常合拍...'。要指出双方的闪光点，也要温柔地提醒潜在的磨合点。",
-            "tags": ["标签1", "标签2", "标签3", "标签4"]
-        }}
+    # 如果是单人数据（只有 A）
+    if "Person_B" not in data_input:
+        system_prompt = "你是一位温暖的情感心理学家。用户刚刚完成了一半的测试。请根据 TA 的答案，生成一段 100 字左右的性格画像。语气要神秘且充满吸引力，最后必须强调：'另一半的性格将决定你们关系的最终化学反应'，引导用户去邀请伴侣。"
+    else:
+        # --- 双人合盘：核心修改在这里 ---
+        system_prompt = """
+        你是一位拥有 20 年经验的资深情感咨询专家，擅长 MBTI、依恋人格以及亲密关系心理学。
         
-        注意：必须只返回纯 JSON 格式。
+        请根据两人的回答进行深度合盘分析，输出一篇 **800字左右** 的专业情感报告。
+        
+        请严格按照以下结构撰写（不要使用 Markdown 标题语法，直接用换行和 emoji 分隔）：
+
+        【💖 核心契合度分析】
+        (这里分析两人在价值观、生活态度上的深层匹配点，指出为什么他们适合在一起。)
+
+        【⚡️ 你们的互动模式】
+        (分析两人在沟通、决策时的化学反应。比如：'A 倾向于...而 B 能够...'。)
+
+        【⚠️ 潜在的磨合挑战】
+        (温柔但一针见血地指出未来可能出现的矛盾点，比如冷战、控制欲等，并给出心理学解释。)
+
+        【💌 给你们的专属建议】
+        (给出 3 条具体可行的相处建议，帮助他们通过具体行动增进感情。)
+
+        注意：
+        1. 语气要温暖、治愈，像一位老朋友在面对面交谈。
+        2. 使用“你们”、“A 同学”、“B 同学”这样的称呼。
+        3. 严禁出现“根据数据”、“从 JSON 来看”等技术性词汇。
         """
 
-        # --- 发起 API 请求 ---
-        response = CLIENT.chat.completions.create(
+    try:
+        completion = CLIENT.chat.completions.create(
             model=MODEL_NAME,
             messages=[
-                {"role": "system", "content": "你是一位资深情感心理学家。请只输出标准的 JSON 格式数据。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7, # 0.7 比较平衡，既有创意又不会太乱
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"用户答卷数据: {json.dumps(data_input, ensure_ascii=False)}"}
+            ]
         )
-
-        # --- 获取并处理返回内容 ---
-        content = response.choices[0].message.content
-        print(f"🤖 AI 原始返回: {content}") # 这一行会在 Railway 日志里显示，非常重要！
-
-        # 清洗内容 (去掉 ```json 等干扰字符)
-        cleaned_content = clean_json_response(content)
         
-        # 解析为 Python 字典
-        result_json = json.loads(cleaned_content)
+        content = completion.choices[0].message.content
         
-        # 验证一下字段是否存在
-        if "analysis" not in result_json:
-            result_json["analysis"] = "AI 生成了内容，但格式稍有偏差，无法提取详细分析。"
-        if "tags" not in result_json:
-            result_json["tags"] = ["默契搭档", "未来可期"]
-
-        return result_json
+        # 提取 JSON (DeepSeek 有时候会多说话，我们只要 JSON)
+        # 这里做一个简单的清洗逻辑：让 AI 无论如何都尽量只返回 JSON
+        # 但为了稳妥，我们让 AI 返回纯文本，我们在后端包装成 JSON
+        # (上面的 Prompt 改成了返回纯文本分析，这样内容更丰富，不容易格式报错)
+        
+        return {
+            "analysis": content,
+            "tags": ["灵魂伴侣", "互补型", "注重沟通", "未来可期"] # 标签先写死或另外让 AI 生成，为了稳妥先这样
+        }
 
     except Exception as e:
-        # --- 错误处理 ---
-        print(f"❌ AI 调用严重错误: {str(e)}")
-        # 打印详细堆栈，方便排查
-        import traceback
-        traceback.print_exc()
-
-        # 兜底返回 (Fallback)：确保前端不会白屏
+        print(f"AI Error: {e}")
         return {
-            "analysis": "(AI 正在打盹，暂时无法生成详细报告。但根据你们的回答逻辑判断，你们的匹配度依然很高！这只是一个临时的网络波动，请稍后再试。)",
-            "tags": ["独立型恋人", "直球选手", "数据暂缺"]
+            "analysis": "AI 正在深度思考中，请稍后再试...",
+            "tags": ["分析中"]
         }
 
 if __name__ == "__main__":
