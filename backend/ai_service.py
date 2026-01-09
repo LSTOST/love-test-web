@@ -1,117 +1,108 @@
 import os
 import json
 import re
-from dotenv import load_dotenv
 from openai import OpenAI
+from dotenv import load_dotenv
 
-# 1. 加载环境变量 (这行代码让本地开发也能读取 .env 文件)
+# 加载环境变量
 load_dotenv()
 
-# 2. 获取 API Key
-MY_API_KEY = os.getenv("MY_API_KEY")
-
-# 简单检查 Key 是否存在，方便调试
-if not MY_API_KEY:
-    print("⚠️ 警告: 未检测到 MY_API_KEY 环境变量，AI 功能可能无法正常工作。请检查 .env 文件或 Railway 变量设置。")
-
-# 3. 初始化 OpenAI 客户端 (连接 OpenRouter)
+# --- 1. 配置 OpenRouter 客户端 ---
+# 确保你的 .env 文件里有 OPENROUTER_API_KEY
 CLIENT = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key=MY_API_KEY,
-    default_headers={
-        "HTTP-Referer": "http://localhost:3000",  # 你的网站地址
-        "X-Title": "Love Test Web",               # 你的应用名称
-    }
+    api_key=os.environ.get("OPENROUTER_API_KEY")
 )
 
-# 4. 选择模型
-MODEL_NAME = "deepseek/deepseek-chat"
-
-def clean_json_response(content):
-    """
-    清洗 AI 返回的内容，尝试提取纯 JSON 字符串。
-    解决 AI 有时会返回 markdown 格式 (```json ... ```) 的问题。
-    """
-    try:
-        # 1. 尝试匹配 ```json ... ``` 中间的内容
-        match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
-        if match:
-            return match.group(1)
-        
-        # 2. 尝试匹配不带 json 标记的 markdown 代码块
-        match_simple = re.search(r"```\s*(.*?)\s*```", content, re.DOTALL)
-        if match_simple:
-            return match_simple.group(1)
-            
-        # 3. 如果没有代码块，尝试直接去除首尾空白
-        return content.strip()
-    except Exception as e:
-        print(f"JSON 清洗预处理出错: {e}")
-        return content
+# --- 2. 选择模型 ---
+# 推荐使用 DeepSeek V3 (国产之光，便宜且情商高) 或 Gemini Flash 1.5
+MODEL_NAME = "deepseek/deepseek-chat" 
+# 如果你想用谷歌的，可以取消下面这行的注释:
+# MODEL_NAME = "google/gemini-flash-1.5"
 
 def get_analysis(data_input):
-    # 如果是单人数据，保持简单逻辑
+    """
+    调用 AI 进行深度情感分析，并强制返回 JSON 格式数据。
+    """
+    
+    # 场景 A: 单人提交 (只有 Person_A，没有 Person_B)
+    # 这时候不需要雷达图，只返回一个简单的文本即可
     if "Person_B" not in data_input:
-        # ... (单人逻辑保持不变，或者简单返回文本) ...
-        return {"analysis": "等待另一半...", "tags": []}
+        return {
+            "score": 0,
+            "title": "等待匹配",
+            "radar": {}, 
+            "card_text": "另一半的答案，才是解开谜题的钥匙。",
+            "analysis": "你的性格画像已生成。请邀请伴侣完成测试，解锁双方的深度契合度报告。"
+        }
 
-    # --- 双人合盘：强制 JSON 结构 ---
+    # 场景 B: 双人合盘 (核心逻辑)
+    print(f"🚀 正在调用 AI ({MODEL_NAME}) 分析双人数据...")
+
     system_prompt = """
-    你是一位精通数据可视化的情感专家。请分析两人的回答，并**严格**按照以下 JSON 格式返回数据。
-    
-    必须返回纯 JSON，不要包含 markdown 格式（如 ```json ... ```）。
-    
-    JSON 结构要求：
+    你是一位精通心理学和数据可视化的情感咨询专家。
+    请根据两人的回答数据（Person_A 和 Person_B），输出一份深度合盘报告。
+
+    【绝对指令】
+    1. **禁止**在分析中使用 "Person_A", "Person_B", "JSON", "数据" 等技术性词汇。
+    2. 请使用 "你们"、"A同学"、"B同学" 这样的称呼，语气要温暖、犀利且富有洞察力。
+    3. **必须**只返回纯 JSON 格式，不要包含 ```json``` 等 markdown 标记。
+
+    【JSON 数据结构要求】
     {
-        "score": 0-100的整数 (匹配度分数),
-        "title": "一个简短的四字关系定义 (如: 灵魂共鸣)",
+        "score": 0-100之间的整数 (请根据契合度给出一个真实的分数),
+        "title": "一个简短的四字关系定义 (例如: 灵魂共鸣、欢喜冤家、互补互助)",
         "radar": {
-            "沟通": 0-100评分,
-            "价值观": 0-100评分,
-            "激情": 0-100评分,
-            "安全感": 0-100评分,
-            "成长性": 0-100评分
+            "沟通": 0-100,
+            "价值观": 0-100,
+            "激情": 0-100,
+            "安全感": 0-100,
+            "成长性": 0-100
         },
-        "card_text": "一段50字以内、唯美扎心的话，适合印在卡片上发朋友圈。",
-        "analysis": "这里写详细的深度分析报告，可以使用emoji，分段要在300字左右。"
+        "card_text": "一段30字以内、唯美扎心的金句，适合印在卡片上发朋友圈。",
+        "analysis": "这里写详细的分析报告。请分为3个段落：\n1. 核心契合点 (你们为什么合适)\n2. 互动模式解析 (你们怎么相处)\n3. 给你们的建议 (如何更好)\n(每段开头请使用 emoji)"
     }
     """
 
     try:
+        # 发送请求给 AI
         completion = CLIENT.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"用户数据: {json.dumps(data_input, ensure_ascii=False)}"}
-            ]
+                {"role": "user", "content": f"用户答卷数据: {json.dumps(data_input, ensure_ascii=False)}"}
+            ],
+            temperature=0.7, # 0.7 比较平衡，既有创意又不会太乱
         )
         
-        content = completion.choices[0].message.content
+        raw_content = completion.choices[0].message.content
+        print("🤖 AI 原始返回:", raw_content) # 在日志里打印出来方便调试
+
+        # --- 核心清洗逻辑：提取 JSON ---
+        # AI 有时候会废话："好的，这是您的 JSON..."，我们需要用正则只抓取 {...} 里面的内容
+        match = re.search(r'\{.*\}', raw_content, re.DOTALL)
         
-        # --- 清洗数据：防止 AI 加了 ```json 等修饰 ---
-        # 使用正则提取第一个 { 和最后一个 } 之间的内容
-        match = re.search(r'\{.*\}', content, re.DOTALL)
         if match:
-            json_str = match.group()
-            result = json.loads(json_str)
+            clean_json_str = match.group()
+            result = json.loads(clean_json_str)
             return result
         else:
-            # 兜底：万一 AI 疯了没返回 JSON
-            return {
-                "score": 88,
-                "title": "默契拍档",
-                "radar": {"沟通":80, "价值观":80, "激情":80, "安全感":80, "成长性":80},
-                "card_text": "你们是彼此最好的镜子，照见最真实的自己。",
-                "analysis": content # 把原文塞进去
-            }
+            # 万一正则没抓到，尝试直接解析
+            return json.loads(raw_content)
 
     except Exception as e:
-        print(f"AI Error: {e}")
-        # 出错时的兜底数据
+        print(f"❌ AI 分析出错: {str(e)}")
+        # 兜底数据：防止前端白屏，给一个“默认好评”
         return {
-            "score": 90,
-            "title": "天作之合",
-            "radar": {"沟通":90, "价值观":90, "激情":90, "安全感":90, "成长性":90},
-            "card_text": "有些相遇，是为了让彼此成为更好的人。",
-            "analysis": "AI 正在重新校准，请刷新页面..."
+            "score": 88,
+            "title": "默契拍档",
+            "radar": {
+                "沟通": 85,
+                "价值观": 80,
+                "激情": 90,
+                "安全感": 75,
+                "成长性": 88
+            },
+            "card_text": "你们是彼此缺失的那块拼图，虽不完美，但刚好契合。",
+            "analysis": "💡 **核心契合点**\nAI 正在重试连接...但这不影响你们的默契。\n\n❤️ **互动建议**\n请刷新页面重试，或直接截图保存这一刻的美好。"
         }
