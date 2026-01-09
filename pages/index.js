@@ -3,15 +3,14 @@ import { useState } from 'react';
 
 export default function Home() {
   const router = useRouter();
+  const [showInput, setShowInput] = useState(false); // 控制输入框是否显示
   const [inviteCode, setInviteCode] = useState('');
 
   const startTest = () => {
-    // User A: 直接开始，没有邀请码
     router.push('/quiz');
   };
 
   const joinTest = () => {
-    // User B: 带着邀请码去答题
     if (!inviteCode.trim()) {
         alert("请输入邀请码");
         return;
@@ -20,40 +19,78 @@ export default function Home() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFF5F5', fontFamily: 'sans-serif', padding: '20px' }}>
-      <h1 style={{ color: '#FF6B6B', fontSize: '3rem', marginBottom: '10px' }}>Love Test AI ❤️</h1>
-      <p style={{ color: '#666', fontSize: '1.2rem', marginBottom: '50px', maxWidth: '500px', textAlign: 'center' }}>
-        基于心理学 + 大模型的深度关系分析。测测你们的灵魂契合度。
-      </p>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #FFF5F5 0%, #FFE3E3 100%)', fontFamily: 'sans-serif', padding: '20px' }}>
+      
+      {/* 标题区 */}
+      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+        <h1 style={{ color: '#FF6B6B', fontSize: '3.5rem', marginBottom: '15px', fontWeight: '800', textShadow: '2px 2px 0px rgba(255,255,255,0.5)' }}>Love Test AI ❤️</h1>
+        <p style={{ color: '#888', fontSize: '1.2rem', maxWidth: '500px', lineHeight: '1.6' }}>
+          基于深度心理学与大模型的亲密关系透视镜。<br/>
+          测测你们的灵魂究竟有多契合。
+        </p>
+      </div>
 
-      {/* 左边：创建测试 (User A) */}
-      <div style={{ background: 'white', padding: '30px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px', marginBottom: '20px', textAlign: 'center' }}>
-        <h3 style={{ margin: '0 0 20px 0', color: '#333' }}>🆕 发起测试</h3>
+      {/* 核心按钮区 */}
+      <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        
+        {/* User A 入口：超大按钮 */}
         <button 
           onClick={startTest}
-          style={{ width: '100%', padding: '15px', background: '#FF6B6B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}
+          style={{ 
+            width: '100%', 
+            padding: '20px', 
+            background: '#FF6B6B', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '50px', 
+            fontSize: '20px', 
+            cursor: 'pointer', 
+            fontWeight: 'bold',
+            boxShadow: '0 10px 30px rgba(255, 107, 107, 0.4)',
+            transition: 'transform 0.1s'
+          }}
+          onMouseDown={(e) => e.target.style.transform = 'scale(0.98)'}
+          onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
         >
-          创建我们的关系档案
+          创建我们的关系档案 🚀
         </button>
+
+        {/* User B 入口：折叠的小链接 */}
+        {!showInput ? (
+            <div 
+                onClick={() => setShowInput(true)}
+                style={{ textAlign: 'center', color: '#999', fontSize: '14px', cursor: 'pointer', marginTop: '10px', textDecoration: 'underline' }}
+            >
+                我有邀请码，手动输入 &gt;
+            </div>
+        ) : (
+            <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="输入邀请码"
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value)}
+                      style={{ flex: 1, padding: '12px', border: '2px solid #fff', borderRadius: '12px', fontSize: '16px', textAlign: 'center', textTransform: 'uppercase', outline: 'none', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.05)' }}
+                    />
+                    <button 
+                      onClick={joinTest}
+                      style={{ padding: '0 20px', background: '#333', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      匹配
+                    </button>
+                </div>
+            </div>
+        )}
+
       </div>
 
-      {/* 右边：加入测试 (User B) */}
-      <div style={{ background: 'white', padding: '30px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-        <h3 style={{ margin: '0 0 20px 0', color: '#333' }}>🤝 我有邀请码</h3>
-        <input 
-          type="text" 
-          placeholder="输入 6 位邀请码"
-          value={inviteCode}
-          onChange={(e) => setInviteCode(e.target.value)}
-          style={{ width: '100%', padding: '12px', border: '2px solid #eee', borderRadius: '10px', marginBottom: '15px', fontSize: '16px', boxSizing: 'border-box', textAlign: 'center', textTransform: 'uppercase' }}
-        />
-        <button 
-          onClick={joinTest}
-          style={{ width: '100%', padding: '15px', background: '#333', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          开始匹配
-        </button>
-      </div>
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
