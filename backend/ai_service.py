@@ -25,7 +25,14 @@ CLIENT = OpenAI(
 )
 
 # 4. 选择模型 (目前测试成功且免费的模型)
-MODEL_NAME = "google/gemini-2.0-flash-exp:free"
+# 修改前：
+# MODEL_NAME = "google/gemini-2.0-flash-exp:free"
+
+# 修改后 (推荐)：使用 Meta 的 Llama 3 免费版，非常稳定且聪明
+MODEL_NAME = "meta-llama/llama-3.1-70b-instruct:free"
+
+# 备选方案 (如果上面那个也不行，就试这个)：
+# MODEL_NAME = "google/gemini-flash-1.5-8b:free"
 
 def clean_json_response(content):
     """
