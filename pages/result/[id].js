@@ -3,120 +3,126 @@ import { useState, useEffect } from 'react';
 
 export default function ResultPage() {
   const router = useRouter();
-  const { id } = router.query; // 从网址里拿到 id (比如 15)
+  const { id } = router.query;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const BACKEND_URL = 'https://love-test-web-production.up.railway.app'; // 你的真实地址
 
-  // 一进来就去后端查数据
+  // 轮询：每 3 秒刷新一次数据 (为了让 User A 在等待 User B 时能自动看到结果更新)
   useEffect(() => {
     if (!id) return;
+    const fetchData = () => {
+        fetch(`${BACKEND_URL}/result/${id}`)
+        .then(res => res.json())
+        .then(resultData => {
+            setData(resultData);
+            setLoading(false);
+        })
+        .catch(err => console.error(err));
+    };
 
-    // 这里换成你的真实后端地址
-    const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
-
-    fetch(`${BACKEND_URL}/result/${id}`)
-      .then(res => {
-        if (!res.ok) throw new Error("找不到这个结果");
-        return res.json();
-      })
-      .then(resultData => {
-        setData(resultData);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    fetchData(); // 立即执行一次
+    const interval = setInterval(fetchData, 3000); // 之后每3秒查一次
+    return () => clearInterval(interval); // 退出页面时停止
   }, [id]);
 
-  // 1. 加载中...
-  if (loading) return (
-    <div style={{ padding: '50px', textAlign: 'center', color: '#666' }}>
-      正在读取你们的爱情档案...❤️
-    </div>
-  );
+  // 模拟支付功能
+  const handlePay = async () => {
+      const res = await fetch(`${BACKEND_URL}/mock_pay`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ test_id: parseInt(id) })
+      });
+      const resData = await res.json();
+      if (resData.status === 'paid') {
+          alert("支付成功！邀请码已生成");
+          window.location.reload(); // 刷新页面状态
+      }
+  };
 
-  // 2. 没找到数据 (比如 ID 输错了)
-  if (!data) return (
-    <div style={{ padding: '50px', textAlign: 'center' }}>
-      <h1>404</h1>
-      <p>哎呀，这份报告好像迷路了。</p>
-      <button onClick={() => router.push('/')} style={{ marginTop: '20px', padding: '10px 20px' }}>
-        重新测试
-      </button>
-    </div>
-  );
+  if (loading) return <div style={{padding:'50px', textAlign:'center'}}>加载中...</div>;
+  if (!data) return <div>404 Not Found</div>;
 
-  // 3. 数据解析 (兼容新旧格式)
+  // --- 状态 1: 未支付 (User A 刚测完) ---
+  if (data.payment_status === 'unpaid') {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
+            <h1 style={{ color: '#ccc' }}>你的性格画像已生成</h1>
+            
+            {/* 模糊处理的占位符 */}
+            <div style={{ filter: 'blur(8px)', userSelect: 'none', margin: '30px 0', opacity: 0.6 }}>
+                <div style={{background: '#eee', height: '20px', marginBottom: '10px', width: '80%', margin:'10px auto'}}></div>
+                <div style={{background: '#eee', height: '20px', marginBottom: '10px', width: '90%', margin:'10px auto'}}></div>
+                <div style={{background: '#eee', height: '20px', marginBottom: '10px', width: '60%', margin:'10px auto'}}></div>
+                <p>这里包含关于你的深度心理分析...</p>
+            </div>
+
+            <div style={{ background: '#fff', padding: '30px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+                <h3>解锁完整合盘报告</h3>
+                <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                    包含：双方性格雷达图 + AI 深度匹配分析 + 邀请伴侣免费测试
+                </p>
+                <button 
+                    onClick={handlePay}
+                    style={{ width: '100%', padding: '16px', background: '#FF6B6B', color: 'white', border: 'none', borderRadius: '50px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255, 107, 107, 0.4)' }}
+                >
+                    立即解锁 (¥19.9)
+                </button>
+            </div>
+        </div>
+      );
+  }
+
+  // --- 状态 2: 已支付，但 B 还没测 (等待中) ---
+  if (data.payment_status === 'paid' && !data.is_finished) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ margin: '50px 0' }}>
+                <h1 style={{ fontSize: '60px', margin: '0' }}>🔓</h1>
+                <h2>解锁成功！</h2>
+                <p style={{ color: '#666' }}>请将下方的邀请码发给你的另一半</p>
+            </div>
+
+            <div style={{ background: '#F0F4F8', padding: '30px', borderRadius: '16px', border: '2px dashed #333' }}>
+                <span style={{ display: 'block', fontSize: '14px', color: '#999', marginBottom: '10px' }}>专属邀请码</span>
+                <strong style={{ fontSize: '40px', letterSpacing: '5px', color: '#333' }}>{data.invite_code}</strong>
+            </div>
+            
+            <p style={{ marginTop: '30px', color: '#FF6B6B', fontSize: '14px' }}>
+                ⏳ 正在等待对方完成测试... (完成后页面会自动刷新)
+            </p>
+        </div>
+      );
+  }
+
+  // --- 状态 3: 大结局 (双方都测完了) ---
   const aiData = data.ai_result || {};
-  const analysisText = aiData.analysis || (Array.isArray(aiData) ? aiData[0] : "分析加载中...");
-  const tagsList = aiData.tags || (Array.isArray(aiData) ? aiData.slice(1) : []);
-
-  // 4. 显示漂亮的报告 (和之前一样的样式)
   return (
     <div style={{ padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-      <h1 style={{ color: '#FF6B6B', fontSize: '32px', marginBottom: '10px' }}>测评报告</h1>
+      <h1 style={{ color: '#FF6B6B', fontSize: '32px', marginBottom: '10px' }}>💖 最终合盘报告</h1>
       
-      {/* 这是一个分享按钮 */}
-      <button 
-        onClick={() => {
-            navigator.clipboard.writeText(window.location.href);
-            alert("链接已复制！快发给你的 TA 吧~");
-        }}
-        style={{ 
-            marginBottom: '30px', 
-            padding: '8px 16px', 
-            background: '#eee', 
-            border: 'none', 
-            borderRadius: '20px', 
-            cursor: 'pointer',
-            fontSize: '14px'
-        }}
-      >
-        🔗 点击复制分享链接
-      </button>
-
-      <div style={{ 
-          padding: '25px', 
-          background: '#fff', 
-          borderRadius: '16px', 
-          textAlign: 'left',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-          border: '1px solid #f0f0f0'
-      }}>
-        <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#333', fontSize: '18px' }}>💡 情感分析报告</h3>
+      {/* AI 分析文案 */}
+      <div style={{ padding: '25px', background: '#fff', borderRadius: '16px', textAlign: 'left', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', marginTop: '20px' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#333', fontSize: '18px' }}>💡 深度情感分析</h3>
         <p style={{ lineHeight: '1.8', color: '#555', fontSize: '15px', whiteSpace: 'pre-wrap' }}>
-          {analysisText}
+          {aiData.analysis || "分析内容加载中..."}
         </p>
       </div>
 
+      {/* 标签 */}
       <div style={{ marginTop: '30px' }}>
-        <h3 style={{ fontSize: '16px', color: '#999', marginBottom: '15px' }}>✨ 关系关键词</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-          {tagsList.length > 0 ? (
-            tagsList.map((tag, index) => (
-              <span key={index} style={{ 
-                  padding: '8px 20px', 
-                  background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)', 
-                  color: 'white', 
-                  borderRadius: '50px', 
-                  fontSize: '14px',
-                  fontWeight: 'bold'
-              }}>
-                {tag}
-              </span>
-            ))
-          ) : (
-            <span style={{ color: '#ccc' }}>暂无标签</span>
-          )}
+          {(aiData.tags || []).map((tag, index) => (
+            <span key={index} style={{ padding: '8px 20px', background: '#FF6B6B', color: 'white', borderRadius: '50px', fontSize: '14px', fontWeight: 'bold' }}>
+              {tag}
+            </span>
+          ))}
         </div>
       </div>
       
-      <div style={{ marginTop: '40px' }}>
-         <button onClick={() => router.push('/')} style={{ color: '#999', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-           我也要测
-         </button>
-      </div>
+      <p style={{ marginTop: '40px', color: '#ccc', fontSize: '12px' }}>
+        (测试完成！这就是你们的商业闭环 MVP)
+      </p>
     </div>
   );
 }
