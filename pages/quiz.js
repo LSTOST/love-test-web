@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
+// SSG
 export async function getStaticProps() {
   const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
   try {
@@ -8,7 +9,8 @@ export async function getStaticProps() {
     const questions = await res.json();
     return { props: { initialQuestions: questions }, revalidate: 60 };
   } catch (error) {
-    return { props: { initialQuestions: [] } };
+    // 就算后端挂了，也返回空数组，防止构建失败
+    return { props: { initialQuestions: [] }, revalidate: 60 };
   }
 }
 
@@ -22,39 +24,25 @@ export default function Quiz({ initialQuestions }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isUserB, setIsUserB] = useState(false);
-  const [loadingText, setLoadingText] = useState("正在建立加密连接...");
+  const [loadingText, setLoadingText] = useState("正在连接 AI...");
   const [loadingProgress, setLoadingProgress] = useState(0);
 
-  // 身份识别
   useEffect(() => {
-    if (router.isReady && invite_code) {
-        setIsUserB(true);
-    }
+    if (router.isReady && invite_code) setIsUserB(true);
   }, [router.isReady, invite_code]);
 
-  // 提交名字，开始答题 (🔥 核心修复点)
   const handleNameSubmit = () => {
     if (!userName.trim()) return alert("请留下你的昵称哦~");
     
-    // 📢 如果是 User B，必须通知后端“我进场了”
+    // 发送进场通知 (不阻塞)
     if (isUserB && invite_code) {
         const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
-        
-        // 发送通知 (Fire and Forget)
         fetch(`${BACKEND_URL}/notify_join`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                invite_code: invite_code, 
-                name: userName 
-            })
-        }).then(() => {
-            console.log("✅ 已发送进场通知:", userName);
-        }).catch(err => {
-            console.error("❌ 通知失败:", err);
-        });
+            body: JSON.stringify({ invite_code: invite_code, name: userName })
+        }).catch(err => console.error("通知异常:", err));
     }
-
     setStage('quiz');
   };
 
@@ -72,8 +60,7 @@ export default function Quiz({ initialQuestions }) {
 
   const submitToBackend = async (finalAnswers) => {
     setStage('loading');
-    setLoadingText(loadingMessages[0]);
-    
+    setLoadingText("正在上传数据...");
     const payloadAnswers = { ...finalAnswers, user_name: userName };
     const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
 
@@ -98,42 +85,32 @@ export default function Quiz({ initialQuestions }) {
 
       if (data.test_id) {
           setLoadingProgress(100);
-          setLoadingText("✅ 完成！正在跳转...");
           setTimeout(() => router.push(`/result/${data.test_id}`), 500);
       } else if (data.status === 'already_finished') {
           router.push(`/result/${data.test_id}`);
       } else {
-          alert("提交异常"); setStage('quiz');
+          alert("提交失败，请重试"); setStage('quiz');
       }
     } catch (error) {
-      console.error(error); alert("网络请求失败"); setStage('quiz');
+      console.error(error); alert("网络请求失败，请检查网络"); setStage('quiz');
     }
   };
 
-  const loadingMessages = [
-      `正在上传 ${userName} 的潜意识数据...`, 
-      "AI 正在构建你们的心理画像...", "正在比对 16 种人格维度的契合度...", 
-      "检测到深层价值观共鸣...", "正在生成情感建议与相处之道...", "报告生成完毕..."
-  ];
+  // 🛡️ 安全检查 1: 确保题目已加载
+  if (!questions || questions.length === 0) {
+      return <div style={{padding:'50px', textAlign:'center', color:'#888'}}>
+          <h3>⏳ 正在连接题库...</h3>
+          <p style={{fontSize:'12px'}}>如果长时间未加载，可能是后端服务正在重启，请刷新页面。</p>
+      </div>;
+  }
 
-  useEffect(() => {
-      if (stage === 'loading') {
-          let step = 0;
-          const timer = setInterval(() => {
-              setLoadingProgress(old => (old >= 95 ? 95 : old + 1.5));
-          }, 100);
-          const textTimer = setInterval(() => {
-              step = (step + 1) % loadingMessages.length;
-              setLoadingText(loadingMessages[step]);
-          }, 2500);
-          return () => { clearInterval(timer); clearInterval(textTimer); };
-      }
-  }, [stage]);
-
-  if (!questions || questions.length === 0) return <div style={{padding:'50px', textAlign:'center'}}>⏳ 准备中...</div>;
-
+  // 🛡️ 安全检查 2: 确保当前题目数据有效 (防止 map undefined 报错)
   const currentQuestion = questions[currentStep];
-  const progress = ((currentStep + 1) / questions.length) * 100;
+  if (!currentQuestion || !Array.isArray(currentQuestion.options)) {
+      return <div style={{padding:'50px', textAlign:'center', color:'red'}}>
+          ❌ 题目数据格式异常 (Q{currentStep + 1})
+      </div>;
+  }
 
   return (
     <div className="quiz-container">
@@ -141,60 +118,25 @@ export default function Quiz({ initialQuestions }) {
       {stage === 'name_input' && (
         <div className="card name-card slide-up">
            <div className="icon-wrapper">
-             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-               <circle cx="12" cy="7" r="4"></circle>
-             </svg>
+             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
            </div>
-           
-           <h2 className="card-title">
-             {isUserB ? '受邀的伙伴' : '很高兴遇见你'}
-           </h2>
-           <p className="card-desc">
-             {isUserB 
-               ? '你的另一半已经完成了测试，现在轮到你了。' 
-               : '在开启深度探索之前，我们该怎么称呼你？'}
-           </p>
-
+           <h2 className="card-title">{isUserB ? '受邀的伙伴' : '很高兴遇见你'}</h2>
+           <p className="card-desc">{isUserB ? '你的另一半已完成测试，轮到你了' : '开启深度探索前，怎么称呼你？'}</p>
            <div className="input-group">
-             <input 
-               type="text" 
-               placeholder="输入你的昵称" 
-               value={userName}
-               onChange={e => setUserName(e.target.value)}
-               maxLength={10}
-               className="modern-input"
-               onKeyDown={e => e.key === 'Enter' && handleNameSubmit()}
-             />
+             <input type="text" placeholder="输入你的昵称" value={userName} onChange={e => setUserName(e.target.value)} maxLength={10} className="modern-input" />
            </div>
-
-           <button onClick={handleNameSubmit} className="gradient-btn">
-             开始探索
-             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{marginLeft:8}}>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
-             </svg>
-           </button>
+           <button onClick={handleNameSubmit} className="gradient-btn">开始探索</button>
         </div>
       )}
 
       {/* 2. 答题阶段 */}
       {stage === 'quiz' && (
         <div className="quiz-content slide-up">
-          <div className="progress-bar">
-             <div className="progress-fill" style={{ width: `${progress}%`, background: isUserB ? '#25D366' : '#FF6B6B' }}></div>
-          </div>
-          <div className="question-header">
-            <span className="step-tag">Q{currentStep + 1}</span>
-            <h2>{currentQuestion.content}</h2>
-          </div>
+          <div className="progress-bar"><div className="progress-fill" style={{ width: `${((currentStep + 1) / questions.length) * 100}%`, background: isUserB ? '#25D366' : '#FF6B6B' }}></div></div>
+          <div className="question-header"><span className="step-tag">Q{currentStep + 1}</span><h2>{currentQuestion.content}</h2></div>
           <div className="options-list">
             {currentQuestion.options.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => handleOptionSelect(option)}
-                className="option-btn"
-              >
+              <button key={index} onClick={() => handleOptionSelect(option)} className="option-btn">
                 <span className="option-label" style={{ color: isUserB ? '#25D366' : '#FF6B6B' }}>{option.label}</span>
                 {option.text}
               </button>
@@ -203,14 +145,12 @@ export default function Quiz({ initialQuestions }) {
         </div>
       )}
 
-      {/* 3. 加载/提交阶段 */}
+      {/* 3. 加载阶段 */}
       {stage === 'loading' && (
         <div className="loading-screen fade-in">
           <div className="brain-icon">🧠</div>
           <h2 className="loading-text">{loadingText}</h2>
-          <div className="loading-bar-bg">
-             <div className="loading-bar-fill" style={{ width: `${loadingProgress}%` }}></div>
-          </div>
+          <div className="loading-bar-bg"><div className="loading-bar-fill" style={{ width: `${loadingProgress}%` }}></div></div>
         </div>
       )}
 
