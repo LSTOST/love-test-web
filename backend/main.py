@@ -43,6 +43,28 @@ def get_questions():
         print(f"Error fetching questions: {e}")
         return []
 
+# ---------------------------------------------------------
+# 新增：User B 进场通知接口
+# ---------------------------------------------------------
+class JoinRequest(BaseModel):
+    invite_code: str
+    name: str
+
+@app.post("/notify_join")
+def notify_join(req: JoinRequest):
+    """
+    当 User B 输入名字开始答题时，更新 partner_name 字段
+    """
+    try:
+        # 找到对应的测试，更新 partner_name
+        response = supabase.table("test_results").update({
+            "partner_name": req.name
+        }).eq("invite_code", req.invite_code).execute()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Notify join error: {e}")
+        return {"status": "error"}
+        
 # 定义数据模型
 class SubmitA_Request(BaseModel):
     user_id: str
