@@ -28,11 +28,29 @@ export default function ResultPage() {
     return () => clearInterval(interval);
   }, [id]);
 
-  const handlePay = () => {
-      // 这里的链接替换为你面包多的真实商品链接
-      // 记得把下面的 mbd-xxxx 换成你的 ID
-      const MIANBAODUO_URL = "https://mbd.pub/o/bread/mbd-xxxxxx"; 
-      window.location.href = `${MIANBAODUO_URL}?custom_order_id=${id}`;
+  const handlePay = async () => {
+      // 🚧 【开发模式】暂时注释掉真实支付链接
+      // const MIANBAODUO_URL = "https://mbd.pub/o/bread/mbd-xxxxxx"; 
+      // window.location.href = `${MIANBAODUO_URL}?custom_order_id=${id}`;
+
+      // ✅ 【测试模式】直接调用后端模拟支付接口
+      // 这样你点击按钮，无需付款，直接变成“已支付”状态，方便你测试后续流程
+      try {
+          const res = await fetch(`${BACKEND_URL}/mock_pay?test_id=${id}`, {
+              method: 'POST' // 注意：确保你的后端 mock_pay 支持 POST 或 GET，通常我们之前写的是 GET 或 POST
+          });
+          const resData = await res.json();
+          
+          if (resData.status === 'success') {
+              alert("测试模式：支付成功！(模拟)");
+              window.location.reload(); // 刷新页面，你应该就能看到“等待对方加入”的卡片了
+          } else {
+              alert("模拟支付失败，请检查后端 mock_pay 接口");
+          }
+      } catch (error) {
+          console.error("Mock pay error:", error);
+          alert("网络请求失败");
+      }
   };
 
   const handleCopyInvite = () => {
