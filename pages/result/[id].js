@@ -258,4 +258,39 @@ export default function ResultPage() {
   const score = ai.score || 88;
 
   return (
-    <div
+    <div style={{ minHeight: '100vh', background: '#f8f9fa', paddingBottom: '40px', fontFamily: 'sans-serif' }}>
+      <div style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)', padding: '40px 20px 80px', color: 'white', textAlign: 'center', borderBottomLeftRadius: '30px', borderBottomRightRadius: '30px', boxShadow: '0 10px 20px rgba(255, 107, 107, 0.2)' }}>
+          <div style={{ fontSize: '14px', opacity: 0.9, letterSpacing: '2px', marginBottom: '5px' }}>AI 契合度检测</div>
+          <h1 style={{ fontSize: '64px', margin: '0', fontWeight: '800', textShadow: '2px 2px 4px rgba(0,0,0,0.1)' }}>{score}%</h1>
+          <div style={{ fontSize: '20px', fontWeight: '600', opacity: 0.95, marginTop: '-10px' }}>{cardTitle}</div>
+      </div>
+      <div style={{ maxWidth: '600px', margin: '-60px auto 0', padding: '0 20px' }}>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
+              <h3 style={{ textAlign: 'center', color: '#333', margin: '0 0 10px', fontSize: '16px' }}>📊 多维关系模型</h3>
+              <div style={{ width: '100%', height: '280px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="#eee" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 12 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar name="Match" dataKey="A" stroke="#FF6B6B" strokeWidth={3} fill="#FF6B6B" fillOpacity={0.4} />
+                    </RadarChart>
+                </ResponsiveContainer>
+              </div>
+          </div>
+          <div style={{ background: 'linear-gradient(145deg, #2b2b2b, #1a1a1a)', borderRadius: '24px', padding: '35px 25px', color: '#FFE5B4', textAlign: 'center', marginBottom: '20px', boxShadow: '0 15px 40px rgba(0,0,0,0.3)', position: 'relative', border: '1px solid #444' }}>
+              <div style={{ fontSize: '12px', opacity: 0.6, marginBottom: '20px', letterSpacing: '3px' }}>RELATIONSHIP PERSONA</div>
+              <h2 style={{ fontSize: '36px', margin: '0 0 20px', fontFamily: 'serif', background: 'linear-gradient(to right, #FFE5B4, #E1C699)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>"{cardTitle}"</h2>
+              <p style={{ fontSize: '16px', lineHeight: '1.8', opacity: 0.9, fontStyle: 'italic', fontFamily: 'serif', margin: '0 auto', maxWidth: '80%' }}>{cardText}</p>
+              <div style={{ marginTop: '30px', width: '40px', height: '1px', background: '#FFE5B4', margin: '30px auto', opacity: 0.3 }}></div>
+              <div style={{ fontSize: '10px', opacity: 0.4, letterSpacing: '1px' }}>LOVE TEST AI GENERATED</div>
+          </div>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '25px', boxShadow: '0 5px 20px rgba(0,0,0,0.03)' }}>
+              <h3 style={{ borderLeft: '4px solid #FF6B6B', paddingLeft: '12px', color: '#333', fontSize: '18px', marginBottom: '20px', fontWeight: 'bold' }}>💡 深度解读</h3>
+              <div style={{ lineHeight: '1.8', color: '#555', fontSize: '15px', whiteSpace: 'pre-wrap' }}>{ai.analysis}</div>
+          </div>
+          <button onClick={() => alert("请截图保存上方的黑金卡片哦！")} style={{ width: '100%', marginTop: '30px', padding: '18px', background: '#333', color: 'white', borderRadius: '16px', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '40px' }}>📸 保存结果卡片</button>
+      </div>
+    </div>
+  );
+}
