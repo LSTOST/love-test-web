@@ -1,20 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
-// --- 核心优化：在服务器构建时就把题目抓好 (SSG) ---
+// SSG: 构建时拉取题目
 export async function getStaticProps() {
   const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
-  
   try {
     const res = await fetch(`${BACKEND_URL}/questions`);
     const questions = await res.json();
-    
-    return {
-      props: { initialQuestions: questions },
-      revalidate: 60, 
-    };
+    return { props: { initialQuestions: questions }, revalidate: 60 };
   } catch (error) {
-    console.error("构建时拉取题目失败:", error);
     return { props: { initialQuestions: [] } };
   }
 }
@@ -23,34 +17,26 @@ export default function Quiz({ initialQuestions }) {
   const router = useRouter();
   const { invite_code } = router.query; 
 
-  // --- 状态管理 ---
-  // 阶段：'name_input' (输名字) -> 'quiz' (答题) -> 'loading' (提交中)
   const [stage, setStage] = useState('name_input'); 
   const [userName, setUserName] = useState('');
-  
   const [questions, setQuestions] = useState(initialQuestions || []);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isUserB, setIsUserB] = useState(false);
-
-  // --- 动画状态 ---
+  
+  // 动画状态
   const [loadingText, setLoadingText] = useState("正在建立加密连接...");
   const [loadingProgress, setLoadingProgress] = useState(0);
 
-  // 身份识别
   useEffect(() => {
-    if (router.isReady && invite_code) {
-        setIsUserB(true);
-    }
+    if (router.isReady && invite_code) setIsUserB(true);
   }, [router.isReady, invite_code]);
 
-  // 提交名字，开始答题
   const handleNameSubmit = () => {
-    if (!userName.trim()) return alert("请留下你的大名/昵称哦~");
+    if (!userName.trim()) return alert("请留下你的昵称哦~");
     setStage('quiz');
   };
 
-  // 选项点击
   const handleOptionSelect = async (option) => {
     const currentQuestion = questions[currentStep];
     const newAnswers = { ...answers, [currentQuestion.id]: option.label };
@@ -63,18 +49,11 @@ export default function Quiz({ initialQuestions }) {
     }
   };
 
-  // 提交到后端
   const submitToBackend = async (finalAnswers) => {
     setStage('loading');
     setLoadingText(loadingMessages[0]);
     
-    // 把名字也混入答案中发给后端
-    // 这样 AI 看到 json 里有 "user_name": "xxx"，就会在报告里叫你的名字！
-    const payloadAnswers = {
-        ...finalAnswers,
-        user_name: userName 
-    };
-
+    const payloadAnswers = { ...finalAnswers, user_name: userName };
     const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
 
     try {
@@ -103,27 +82,19 @@ export default function Quiz({ initialQuestions }) {
       } else if (data.status === 'already_finished') {
           router.push(`/result/${data.test_id}`);
       } else {
-          alert("提交异常"); 
-          setStage('quiz'); // 回退
+          alert("提交异常"); setStage('quiz');
       }
     } catch (error) {
-      console.error(error); 
-      alert("网络请求失败"); 
-      setStage('quiz');
+      console.error(error); alert("网络请求失败"); setStage('quiz');
     }
   };
 
-  // 加载动画文案
   const loadingMessages = [
-      `正在上传 ${userName} 的潜意识数据...`, // 这里的文案也个性化了！
-      "AI 正在构建你们的心理画像...", 
-      "正在比对 16 种人格维度的契合度...", 
-      "检测到深层价值观共鸣...",
-      "正在生成情感建议与相处之道...", 
-      "报告生成完毕..."
+      `正在上传 ${userName} 的潜意识数据...`, 
+      "AI 正在构建你们的心理画像...", "正在比对 16 种人格维度的契合度...", 
+      "检测到深层价值观共鸣...", "正在生成情感建议与相处之道...", "报告生成完毕..."
   ];
 
-  // 动画计时器
   useEffect(() => {
       if (stage === 'loading') {
           let step = 0;
@@ -146,34 +117,51 @@ export default function Quiz({ initialQuestions }) {
   return (
     <div className="quiz-container">
       
-      {/* 1. 名字输入阶段 */}
+      {/* 1. 名字输入阶段 (精修版) */}
       {stage === 'name_input' && (
-        <div className="card name-card">
-           <div className="icon">👋</div>
-           <h2>Hi，{isUserB ? '受邀的伙伴' : '很高兴遇见你'}</h2>
-           <p className="desc">
+        <div className="card name-card slide-up">
+           <div className="icon-wrapper">
+             {/* 替换 Emoji 为高端 SVG 图标 */}
+             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+               <circle cx="12" cy="7" r="4"></circle>
+             </svg>
+           </div>
+           
+           <h2 className="card-title">
+             {isUserB ? '受邀的伙伴' : '很高兴遇见你'}
+           </h2>
+           <p className="card-desc">
              {isUserB 
                ? '你的另一半已经完成了测试，现在轮到你了。' 
                : '在开启深度探索之前，我们该怎么称呼你？'}
            </p>
-           <input 
-             type="text" 
-             placeholder="请输入你的昵称" 
-             value={userName}
-             onChange={e => setUserName(e.target.value)}
-             maxLength={10}
-             className="name-input"
-             onKeyDown={e => e.key === 'Enter' && handleNameSubmit()}
-           />
-           <button onClick={handleNameSubmit} className="start-btn">
-             开始测试
+
+           <div className="input-group">
+             <input 
+               type="text" 
+               placeholder="输入你的昵称" 
+               value={userName}
+               onChange={e => setUserName(e.target.value)}
+               maxLength={10}
+               className="modern-input"
+               onKeyDown={e => e.key === 'Enter' && handleNameSubmit()}
+             />
+           </div>
+
+           <button onClick={handleNameSubmit} className="gradient-btn">
+             开始探索
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{marginLeft:8}}>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+             </svg>
            </button>
         </div>
       )}
 
       {/* 2. 答题阶段 */}
       {stage === 'quiz' && (
-        <div className="quiz-content">
+        <div className="quiz-content slide-up">
           <div className="progress-bar">
              <div className="progress-fill" style={{ width: `${progress}%`, background: isUserB ? '#25D366' : '#FF6B6B' }}></div>
           </div>
@@ -200,7 +188,7 @@ export default function Quiz({ initialQuestions }) {
 
       {/* 3. 加载/提交阶段 */}
       {stage === 'loading' && (
-        <div className="loading-screen">
+        <div className="loading-screen fade-in">
           <div className="brain-icon">🧠</div>
           <h2 className="loading-text">{loadingText}</h2>
           <div className="loading-bar-bg">
@@ -209,100 +197,121 @@ export default function Quiz({ initialQuestions }) {
         </div>
       )}
 
-      {/* 样式表 */}
       <style jsx>{`
         .quiz-container {
           min-height: 100vh;
           background: #f8f9fa;
           padding: 20px;
-          font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
-        /* 卡片通用样式 */
         .card, .quiz-content, .loading-screen {
-          background: white;
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(20px);
           width: 100%;
-          max-width: 500px;
-          padding: 30px;
+          max-width: 480px;
+          padding: 40px 30px;
           border-radius: 24px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.06);
+          border: 1px solid rgba(255,255,255,0.8);
         }
 
-        /* 名字输入卡片 */
-        .name-card {
-          text-align: center;
-        }
-        .icon { font-size: 40px; margin-bottom: 20px; }
-        .name-card h2 { margin: 0 0 10px; color: #333; }
-        .desc { color: #666; font-size: 14px; margin-bottom: 30px; line-height: 1.5; }
-        .name-input {
-          width: 100%;
-          padding: 15px;
-          border: 2px solid #eee;
-          border-radius: 12px;
-          font-size: 16px;
-          text-align: center;
-          margin-bottom: 20px;
-          outline: none;
-          transition: border-color 0.3s;
-        }
-        .name-input:focus { border-color: #FF6B6B; }
-        .start-btn {
-          width: 100%;
-          padding: 16px;
-          background: #333;
-          color: white;
-          border: none;
-          border-radius: 12px;
-          font-size: 16px;
-          font-weight: bold;
-          cursor: pointer;
-        }
-
-        /* 答题样式 */
-        .progress-bar {
-          height: 6px;
-          background: #eee;
-          border-radius: 3px;
-          margin-bottom: 30px;
-          overflow: hidden;
-        }
-        .progress-fill { height: 100%; transition: width 0.3s ease; }
-        .step-tag {
-          font-size: 12px;
-          color: #999;
-          font-weight: 600;
-          letter-spacing: 1px;
-        }
-        .question-header h2 {
-          font-size: 22px;
-          margin: 10px 0 30px;
-          line-height: 1.4;
-          color: #222;
-        }
-        .options-list { display: flex; flexDirection: column; gap: 12px; }
-        .option-btn {
-          padding: 18px 20px;
-          background: #fff;
-          border: 1px solid #eee;
-          border-radius: 16px;
-          text-align: left;
-          font-size: 16px;
-          color: #444;
-          cursor: pointer;
-          transition: all 0.2s;
+        /* 名字卡片精修 */
+        .name-card { text-align: center; }
+        
+        .icon-wrapper {
+          width: 64px;
+          height: 64px;
+          background: #F3F4F6;
+          border-radius: 50%;
           display: flex;
           align-items: center;
+          justify-content: center;
+          margin: 0 auto 24px;
+          color: #333;
+        }
+
+        .card-title {
+          font-size: 24px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 12px;
+        }
+
+        .card-desc {
+          color: #666;
+          font-size: 15px;
+          line-height: 1.6;
+          margin-bottom: 30px;
+        }
+
+        .input-group {
+          margin-bottom: 25px;
+        }
+
+        .modern-input {
+          width: 100%;
+          padding: 18px 20px;
+          background: #F9FAFB;
+          border: 2px solid transparent;
+          border-radius: 16px;
+          font-size: 16px;
+          text-align: center;
+          outline: none;
+          color: #111;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        
+        .modern-input:focus {
+          background: #fff;
+          border-color: #FF6B6B;
+          box-shadow: 0 4px 12px rgba(255, 107, 107, 0.1);
+        }
+
+        .gradient-btn {
+          width: 100%;
+          padding: 18px;
+          background: linear-gradient(135deg, #111, #333);
+          color: white;
+          border: none;
+          border-radius: 50px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.2s;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .gradient-btn:hover {
+          transform: translateY(-2px);
+        }
+
+        /* 动画效果 */
+        .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 答题通用样式 */
+        .progress-bar { height: 6px; background: #eee; border-radius: 3px; margin-bottom: 30px; overflow: hidden; }
+        .progress-fill { height: 100%; transition: width 0.3s ease; }
+        .step-tag { font-size: 12px; color: #999; font-weight: 600; letter-spacing: 1px; }
+        .question-header h2 { font-size: 22px; margin: 10px 0 30px; line-height: 1.4; color: #222; }
+        .options-list { display: flex; flexDirection: column; gap: 12px; }
+        .option-btn {
+          padding: 18px 20px; background: #fff; border: 1px solid #eee; border-radius: 16px;
+          text-align: left; font-size: 16px; color: #444; cursor: pointer; transition: all 0.2s;
+          display: flex; align-items: center;
         }
         .option-btn:active { transform: scale(0.98); background: #f9f9f9; }
-        .option-label {
-          font-weight: 800;
-          margin-right: 12px;
-          font-size: 18px;
-        }
+        .option-label { font-weight: 800; margin-right: 12px; font-size: 18px; }
 
         /* 加载样式 */
         .loading-screen { text-align: center; padding: 50px 30px; }
@@ -310,7 +319,6 @@ export default function Quiz({ initialQuestions }) {
         .loading-text { font-size: 18px; color: #333; min-height: 24px; margin-bottom: 30px; }
         .loading-bar-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
         .loading-bar-fill { height: 100%; background: linear-gradient(90deg, #FF6B6B, #FF8E53); transition: width 0.3s; }
-
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
       `}</style>
     </div>
