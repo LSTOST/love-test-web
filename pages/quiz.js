@@ -51,7 +51,7 @@ export default function Quiz({ initialQuestions }) {
     setAnswers(newAnswers);
 
     if (currentStep < questions.length - 1) {
-      setTimeout(() => setCurrentStep(currentStep + 1), 250); // 稍微缩短等待时间，更跟手
+      setTimeout(() => setCurrentStep(currentStep + 1), 250);
     } else {
       await submitToBackend(newAnswers);
     }
@@ -101,8 +101,7 @@ export default function Quiz({ initialQuestions }) {
   const currentQuestion = questions[currentStep];
   if (!currentQuestion) return null;
 
-  // 动态主题色
-  const themeColor = isUserB ? '#10B981' : '#FF6B6B'; // User B 绿色，User A 粉红
+  const themeColor = isUserB ? '#10B981' : '#FF6B6B';
 
   return (
     <div className="quiz-container">
@@ -122,10 +121,9 @@ export default function Quiz({ initialQuestions }) {
         </div>
       )}
 
-      {/* 阶段 2: 答题 (核心优化区域) */}
+      {/* 阶段 2: 答题 */}
       {stage === 'quiz' && (
         <div className="quiz-content slide-up">
-          {/* 进度条 */}
           <div className="progress-container">
              <div className="progress-text">
                 Question <span style={{color: themeColor, fontWeight:'bold'}}>{currentStep + 1}</span>
@@ -135,13 +133,9 @@ export default function Quiz({ initialQuestions }) {
                 <div className="progress-fill" style={{ width: `${((currentStep + 1) / questions.length) * 100}%`, background: themeColor }}></div>
              </div>
           </div>
-
-          {/* 题目 */}
           <div className="question-header">
             <h2 className="question-text">{currentQuestion.content}</h2>
           </div>
-
-          {/* 选项列表 (强制竖排) */}
           <div className="options-list">
             {currentQuestion.options.map((option, index) => (
               <button key={index} onClick={() => handleOptionSelect(option)} className="option-btn">
@@ -157,10 +151,23 @@ export default function Quiz({ initialQuestions }) {
         </div>
       )}
 
-      {/* 阶段 3: 加载 */}
+      {/* 阶段 3: 加载 (这里就是你要替换的云端图标部分) */}
       {stage === 'loading' && (
         <div className="loading-screen fade-in">
-          <div className="brain-icon">🧠</div>
+          <div className="upload-icon-wrapper">
+            {/* 云端上传 SVG 图标 */}
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="url(#gradient-upload)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <defs>
+                <linearGradient id="gradient-upload" x1="0" y1="0" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#FF6B6B" />
+                  <stop offset="100%" stopColor="#FF8E53" />
+                </linearGradient>
+              </defs>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+          </div>
           <h2 className="loading-text">{loadingText}</h2>
           <div className="loading-bar-bg"><div className="loading-bar-fill" style={{ width: `${loadingProgress}%` }}></div></div>
         </div>
@@ -169,18 +176,8 @@ export default function Quiz({ initialQuestions }) {
       <style jsx>{`
         * { box-sizing: border-box; }
         .quiz-container { min-height: 100vh; background: #f8f9fa; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; }
+        .card, .quiz-content, .loading-screen { background: white; width: 100%; max-width: 440px; padding: 30px 24px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.8); }
         
-        /* 卡片通用样式 */
-        .card, .quiz-content, .loading-screen { 
-            background: white; 
-            width: 100%; 
-            max-width: 440px; 
-            padding: 30px 24px; /* 调整内边距 */
-            border-radius: 24px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.08); 
-            border: 1px solid rgba(255,255,255,0.8); 
-        }
-
         /* 名字卡片 */
         .name-card { text-align: center; }
         .icon-wrapper { width: 60px; height: 60px; background: #F3F4F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #111; }
@@ -190,77 +187,34 @@ export default function Quiz({ initialQuestions }) {
         .modern-input:focus { border-color: #333; }
         .gradient-btn { display: flex; width: 100%; height: 56px; padding: 0 20px; background: #111; color: white; border: none; border-radius: 50px; font-size: 16px; font-weight: 600; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
 
-        /* 答题页优化 */
+        /* 答题页 */
         .progress-container { margin-bottom: 30px; }
         .progress-text { font-size: 12px; color: #888; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; text-transform: uppercase; }
         .progress-bar-bg { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
         .progress-fill { height: 100%; transition: width 0.3s ease; border-radius: 3px; }
-
         .question-header { margin-bottom: 30px; min-height: 60px; }
-        .question-text { 
-            font-size: 22px; 
-            line-height: 1.4; 
-            color: #1a1a1a; 
-            font-weight: 700; 
-            margin: 0;
-        }
+        .question-text { font-size: 22px; line-height: 1.4; color: #1a1a1a; font-weight: 700; margin: 0; }
+        .options-list { display: flex; flex-direction: column; gap: 16px; }
+        .option-btn { position: relative; padding: 20px; background: #fff; border: 2px solid #f3f4f6; border-radius: 18px; text-align: left; cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; align-items: flex-start; gap: 16px; width: 100%; }
+        .option-btn:active { transform: scale(0.98); background: #fafafa; border-color: #e5e7eb; }
+        .option-tag { font-weight: 800; font-size: 16px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 10px; flex-shrink: 0; margin-top: 2px; }
+        .option-content { font-size: 16px; color: #333; line-height: 1.5; flex: 1; font-weight: 500; }
 
-        /* 选项列表 - 强制竖排 */
-        .options-list { 
-            display: flex; 
-            flex-direction: column; /* 关键：垂直排列 */
-            gap: 16px; /* 增加间距 */
-        }
-        
-        .option-btn { 
-            position: relative;
-            padding: 20px; 
-            background: #fff; 
-            border: 2px solid #f3f4f6; /* 更明显的边框 */
-            border-radius: 18px; 
-            text-align: left; 
-            cursor: pointer; 
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex; 
-            align-items: flex-start; /* 顶部对齐，防止多行文字错位 */
-            gap: 16px;
-            width: 100%;
-        }
-        
-        .option-btn:active { 
-            transform: scale(0.98); 
-            background: #fafafa;
-            border-color: #e5e7eb;
-        }
-
-        .option-tag {
-            font-weight: 800;
-            font-size: 16px;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            flex-shrink: 0; /* 防止被压缩 */
-            margin-top: 2px; /* 微调对齐 */
-        }
-
-        .option-content {
-            font-size: 16px;
-            color: #333;
-            line-height: 1.5;
-            flex: 1;
-            font-weight: 500;
-        }
-
-        /* 加载页 */
+        /* 🔥 加载页 (新样式) */
         .loading-screen { text-align: center; padding: 50px 30px; }
-        .brain-icon { font-size: 60px; margin-bottom: 30px; animation: bounce 1s infinite; }
-        .loading-text { font-size: 16px; color: #333; margin-bottom: 20px; }
+        
+        .upload-icon-wrapper { 
+          margin-bottom: 25px; 
+          animation: float 2s ease-in-out infinite; 
+          display: inline-block;
+        }
+        
+        .loading-text { font-size: 16px; color: #333; margin-bottom: 20px; font-weight: 500; }
         .loading-bar-bg { height: 6px; background: #eee; border-radius: 4px; overflow: hidden; }
-        .loading-bar-fill { height: 100%; background: #333; transition: width 0.3s; }
+        .loading-bar-fill { height: 100%; background: linear-gradient(90deg, #FF6B6B, #FF8E53); transition: width 0.3s; }
+        
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .slide-up { animation: slideUp 0.5s ease-out; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
