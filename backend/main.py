@@ -27,6 +27,22 @@ url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key) if url and key else None
 
+# ---------------------------------------------------------
+# 新增：获取题库接口
+# ---------------------------------------------------------
+@app.get("/questions")
+def get_questions():
+    """
+    从数据库获取所有题目
+    """
+    try:
+        # 查表，按 id 排序
+        response = supabase.table("questions").select("*").order("id").execute()
+        return response.data
+    except Exception as e:
+        print(f"Error fetching questions: {e}")
+        return []
+
 # 定义数据模型
 class SubmitA_Request(BaseModel):
     user_id: str
