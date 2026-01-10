@@ -25,17 +25,22 @@ export default function Quiz({ initialQuestions }) {
   const [loadingText, setLoadingText] = useState("正在建立加密连接...");
   const [loadingProgress, setLoadingProgress] = useState(0);
 
+  // 身份识别
   useEffect(() => {
-    if (router.isReady && invite_code) setIsUserB(true);
+    if (router.isReady && invite_code) {
+        setIsUserB(true);
+    }
   }, [router.isReady, invite_code]);
 
+  // 提交名字，开始答题 (🔥 核心修复点)
   const handleNameSubmit = () => {
     if (!userName.trim()) return alert("请留下你的昵称哦~");
     
-    // 🔥 新增逻辑：如果是 User B，偷偷通知后端“我进场了”
+    // 📢 如果是 User B，必须通知后端“我进场了”
     if (isUserB && invite_code) {
         const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
-        // 使用 fetch 发送通知，但不阻塞用户体验 (Fire and Forget)
+        
+        // 发送通知 (Fire and Forget)
         fetch(`${BACKEND_URL}/notify_join`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -43,7 +48,11 @@ export default function Quiz({ initialQuestions }) {
                 invite_code: invite_code, 
                 name: userName 
             })
-        }).catch(err => console.error("通知失败:", err));
+        }).then(() => {
+            console.log("✅ 已发送进场通知:", userName);
+        }).catch(err => {
+            console.error("❌ 通知失败:", err);
+        });
     }
 
     setStage('quiz');
@@ -128,7 +137,7 @@ export default function Quiz({ initialQuestions }) {
 
   return (
     <div className="quiz-container">
-      {/* 1. 名字输入阶段 (修复对齐版) */}
+      {/* 1. 名字输入阶段 */}
       {stage === 'name_input' && (
         <div className="card name-card slide-up">
            <div className="icon-wrapper">
@@ -206,130 +215,28 @@ export default function Quiz({ initialQuestions }) {
       )}
 
       <style jsx>{`
-        /* 关键修复：强制全局盒子模型为 border-box，解决对齐问题 */
-        * {
-          box-sizing: border-box; 
-        }
-
-        .quiz-container {
-          min-height: 100vh;
-          background: #f8f9fa;
-          padding: 20px;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .card, .quiz-content, .loading-screen {
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(20px);
-          width: 100%;
-          max-width: 440px; /* 稍微调窄一点，更精致 */
-          padding: 40px 32px;
-          border-radius: 24px;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.06);
-          border: 1px solid rgba(255,255,255,0.8);
-        }
-
-        /* 名字卡片 */
+        * { box-sizing: border-box; }
+        .quiz-container { min-height: 100vh; background: #f8f9fa; padding: 20px; font-family: sans-serif; display: flex; align-items: center; justify-content: center; }
+        .card, .quiz-content, .loading-screen { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); width: 100%; max-width: 440px; padding: 40px 32px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.06); border: 1px solid rgba(255,255,255,0.8); }
         .name-card { text-align: center; }
-        
-        .icon-wrapper {
-          width: 60px;
-          height: 60px;
-          background: #F3F4F6;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 20px;
-          color: #111;
-        }
-
-        .card-title {
-          font-size: 24px;
-          font-weight: 800;
-          color: #111;
-          margin: 0 0 10px;
-        }
-
-        .card-desc {
-          color: #666;
-          font-size: 15px;
-          line-height: 1.6;
-          margin-bottom: 30px;
-        }
-
-        .input-group {
-          width: 100%;
-          margin-bottom: 20px;
-        }
-
-        .modern-input {
-          display: block; /* 确保是块级元素 */
-          width: 100%;    /* 占满容器 */
-          height: 56px;   /* 显式定高，确保和按钮一样高 */
-          padding: 0 20px;
-          background: #fff;
-          border: 2px solid #eee; /* 默认灰色边框 */
-          border-radius: 50px;    /* 改成全圆角，和按钮保持一致 */
-          font-size: 16px;
-          text-align: center;
-          outline: none;
-          color: #111;
-          font-weight: 500;
-          transition: all 0.2s;
-        }
-        
-        .modern-input:focus {
-          border-color: #FF6B6B;
-          box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.1);
-        }
-
-        .gradient-btn {
-          display: flex;
-          width: 100%;
-          height: 56px;   /* 显式定高，和输入框一样 */
-          padding: 0 20px;
-          background: #111;
-          color: white;
-          border: none;
-          border-radius: 50px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.2s;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
-        .gradient-btn:hover {
-          transform: translateY(-2px);
-          background: #000;
-        }
-
-        /* 动画 */
+        .icon-wrapper { width: 60px; height: 60px; background: #F3F4F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #111; }
+        .card-title { font-size: 24px; font-weight: 800; color: #111; margin: 0 0 10px; }
+        .card-desc { color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 30px; }
+        .input-group { width: 100%; margin-bottom: 20px; }
+        .modern-input { display: block; width: 100%; height: 56px; padding: 0 20px; background: #fff; border: 2px solid #eee; border-radius: 50px; font-size: 16px; text-align: center; outline: none; color: #111; font-weight: 500; transition: all 0.2s; }
+        .modern-input:focus { border-color: #FF6B6B; box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.1); }
+        .gradient-btn { display: flex; width: 100%; height: 56px; padding: 0 20px; background: #111; color: white; border: none; border-radius: 50px; font-size: 16px; font-weight: 600; cursor: pointer; align-items: center; justify-content: center; transition: transform 0.2s; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .gradient-btn:hover { transform: translateY(-2px); background: #000; }
         .slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 答题部分 */
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .progress-bar { height: 6px; background: #eee; border-radius: 3px; margin-bottom: 30px; overflow: hidden; }
         .progress-fill { height: 100%; transition: width 0.3s ease; }
         .step-tag { font-size: 12px; color: #999; font-weight: 600; letter-spacing: 1px; }
         .question-header h2 { font-size: 22px; margin: 10px 0 30px; line-height: 1.4; color: #222; }
         .options-list { display: flex; flexDirection: column; gap: 12px; }
-        .option-btn {
-          padding: 18px 20px; background: #fff; border: 1px solid #eee; border-radius: 16px;
-          text-align: left; font-size: 16px; color: #444; cursor: pointer; transition: all 0.2s;
-          display: flex; align-items: center;
-        }
+        .option-btn { padding: 18px 20px; background: #fff; border: 1px solid #eee; border-radius: 16px; text-align: left; font-size: 16px; color: #444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; }
         .option-btn:active { transform: scale(0.98); background: #f9f9f9; }
         .option-label { font-weight: 800; margin-right: 12px; font-size: 18px; }
-
         .loading-screen { text-align: center; padding: 50px 30px; }
         .brain-icon { font-size: 60px; margin-bottom: 30px; animation: bounce 1s infinite; }
         .loading-text { font-size: 18px; color: #333; min-height: 24px; margin-bottom: 30px; }
