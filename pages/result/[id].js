@@ -1,6 +1,5 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
-// 引入图表库
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 export default function ResultPage() {
@@ -23,33 +22,26 @@ export default function ResultPage() {
         .catch(err => console.error(err));
     };
     fetchData();
-    // 轮询：每3秒查一次状态
     const interval = setInterval(fetchData, 3000); 
     return () => clearInterval(interval);
   }, [id]);
 
+  // 💰 支付处理 (开发模式/生产模式切换)
   const handlePay = async () => {
-      // 🚧 【开发模式】暂时注释掉真实支付链接
-      // const MIANBAODUO_URL = "https://mbd.pub/o/bread/mbd-xxxxxx"; 
+      // --- 生产环境用这个 ---
+      // const MIANBAODUO_URL = "https://mbd.pub/o/bread/mbd-你的真实ID"; 
       // window.location.href = `${MIANBAODUO_URL}?custom_order_id=${id}`;
 
-      // ✅ 【测试模式】直接调用后端模拟支付接口
-      // 这样你点击按钮，无需付款，直接变成“已支付”状态，方便你测试后续流程
+      // --- 开发环境用这个 (模拟支付) ---
       try {
-          const res = await fetch(`${BACKEND_URL}/mock_pay?test_id=${id}`, {
-              method: 'POST' // 注意：确保你的后端 mock_pay 支持 POST 或 GET，通常我们之前写的是 GET 或 POST
-          });
+          const res = await fetch(`${BACKEND_URL}/mock_pay?test_id=${id}`, { method: 'POST' });
           const resData = await res.json();
-          
           if (resData.status === 'success') {
-              alert("测试模式：支付成功！(模拟)");
-              window.location.reload(); // 刷新页面，你应该就能看到“等待对方加入”的卡片了
-          } else {
-              alert("模拟支付失败，请检查后端 mock_pay 接口");
+              alert("测试模式：支付成功！");
+              window.location.reload();
           }
       } catch (error) {
-          console.error("Mock pay error:", error);
-          alert("网络请求失败");
+          alert("请求失败，请确保后端 mock_pay 接口已部署");
       }
   };
 
@@ -57,10 +49,7 @@ export default function ResultPage() {
       const origin = window.location.origin;
       const inviteLink = `${origin}/quiz?invite_code=${data.invite_code}`;
       const shareText = `亲爱的，我刚刚做了一个超准的「AI 恋爱契合度测试」💑 \n快来填一下你的那部分，看看咱们的默契度有多少！\n\n👉 点击链接直接开始：\n${inviteLink}`;
-
-      navigator.clipboard.writeText(shareText).then(() => {
-          alert("✅ 邀请链接已复制！\n快去微信粘贴发给你的 TA 吧~");
-      });
+      navigator.clipboard.writeText(shareText).then(() => alert("✅ 链接已复制，快去发给 TA 吧！"));
   };
 
   if (loading) return <div style={{padding:'50px', textAlign:'center', color:'#888'}}>🔍 正在同步数据...</div>;
@@ -71,13 +60,7 @@ export default function ResultPage() {
   // ==========================================
   if (data.payment_status === 'unpaid') {
       return (
-        <div style={{
-            padding: '40px 20px', 
-            textAlign: 'center', 
-            fontFamily: 'sans-serif', 
-            maxWidth: '600px', 
-            margin: '0 auto'
-        }}>
+        <div style={{padding: '40px 20px', textAlign: 'center', maxWidth: '600px', margin: '0 auto'}}>
             <h1 style={{color:'#333'}}>🎨 基础画像已生成</h1>
             <div style={{filter:'blur(5px)', userSelect:'none', margin:'30px 0', opacity:0.6}}>
                 <div style={{background:'#eee', height:'20px', width:'80%', margin:'10px auto'}}></div>
@@ -86,16 +69,9 @@ export default function ResultPage() {
                 <p>核心契合度：??%</p>
             </div>
             <button onClick={handlePay} style={{
-                width: '100%', 
-                padding: '16px', 
-                background: '#FF6B6B', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '50px', 
-                fontSize: '18px', 
-                fontWeight: 'bold', 
-                boxShadow: '0 4px 15px rgba(255, 107, 107, 0.4)', 
-                cursor: 'pointer'
+                width: '100%', padding: '16px', background: '#FF6B6B', color: 'white', 
+                border: 'none', borderRadius: '50px', fontSize: '18px', fontWeight: 'bold', 
+                boxShadow: '0 4px 15px rgba(255, 107, 107, 0.4)', cursor: 'pointer'
             }}>
                 立即解锁完整合盘 (¥9.9)
             </button>
@@ -104,133 +80,167 @@ export default function ResultPage() {
   }
 
   // ==========================================
-  // 场景 2: 等待对方 (这里是最关键的逻辑)
+  // 场景 2: 等待对方 (精修 UI 版)
   // ==========================================
-  // 只有当支付了(paid) 且 还没结束(!is_finished) 时，才显示这里
   if (data.payment_status === 'paid' && !data.is_finished) {
       return (
         <div style={{
+            minHeight: '100vh',
+            background: '#f8f9fa',
             padding: '40px 20px', 
-            textAlign: 'center', 
-            fontFamily: 'sans-serif', 
-            maxWidth: '600px', 
-            margin: '0 auto'
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
         }}>
-            <div style={{ marginTop: '30px', marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '28px', color: '#333' }}>🔓 解锁成功！</h1>
-                <p style={{ color: '#666', fontSize: '16px' }}>只差最后一步啦</p>
+            <div style={{ marginTop: '20px', marginBottom: '30px', textAlign: 'center' }}>
+                <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔓</div>
+                <h1 style={{ fontSize: '24px', color: '#333', margin: '0 0 5px' }}>已成功解锁</h1>
+                <p style={{ color: '#666', fontSize: '15px', margin: 0 }}>只差最后一步，召唤你的另一半！</p>
             </div>
 
             {/* 邀请卡片 */}
-            <div style={{ 
-                background: 'white', 
-                padding: '30px', 
-                borderRadius: '20px', 
-                boxShadow: '0 8px 30px rgba(0,0,0,0.08)', 
-                border: '1px solid #f0f0f0' 
-            }}>
-                <p style={{ fontSize: '14px', color: '#999', marginBottom: '10px' }}>邀请对方完成测试，即可查看合盘报告</p>
-                
-                <div style={{ 
-                    background: '#F5F7FA', 
-                    padding: '15px', 
-                    borderRadius: '12px', 
-                    marginBottom: '25px', 
-                    letterSpacing: '2px' 
-                }}>
-                    <span style={{ color: '#666', fontSize: '12px' }}>专属邀请码：</span>
-                    <strong style={{ fontSize: '24px', color: '#333', marginLeft: '10px' }}>{data.invite_code}</strong>
+            <div className="invite-card">
+                <div className="code-box">
+                    <span className="code-label">专属邀请码</span>
+                    <strong className="code-text">{data.invite_code}</strong>
                 </div>
 
-                <button 
-                    onClick={handleCopyInvite}
-                    style={{ 
-                        width: '100%', 
-                        padding: '16px', 
-                        background: '#25D366', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '12px', 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        cursor: 'pointer', 
-                        boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)'
-                    }}
-                >
+                <button onClick={handleCopyInvite} className="copy-btn">
                     🚀 复制链接发给 TA
                 </button>
+                
+                {/* ✅ 找回的贴心文案 */}
+                <p className="hint-text">
+                   对方点击链接即可直接开始，无需手动输入邀请码
+                </p>
             </div>
 
-            {/* 🔥 智能状态监控区 (实时显示对方是否进场) */}
-            <div style={{ marginTop: '40px', width: '100%' }}>
+            {/* 🔥 智能状态监控区 (UI 升级) */}
+            <div className={`status-bar ${data.partner_name ? 'active' : ''}`}>
                 {data.partner_name ? (
-                    // 状态 A: 对方已经开始答题了
-                    <div className="status-card answering">
-                        <div className="avatar-circle">
+                    // 状态 A: 对方已进场
+                    <>
+                        <div className="avatar">
                              {data.partner_name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="status-text">
-                            <h3 style={{margin:'0 0 5px', fontSize:'16px', color:'#333', textAlign:'left'}}>
-                                {data.partner_name} 正在认真答题...
-                            </h3>
-                            <p style={{margin:0, fontSize:'12px', color:'#10B981', textAlign:'left'}}>
-                                ⚡️ 对方已上线，请保持页面开启
-                            </p>
+                        <div className="status-content">
+                            <h3>{data.partner_name} 正在答题...</h3>
+                            <p>请保持页面开启，结果即将生成</p>
                         </div>
-                        <div className="pulse-dot"></div>
-                    </div>
+                        <div className="live-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </>
                 ) : (
-                    // 状态 B: 对方还没点开链接
-                    <div className="status-card waiting">
-                        <div className="icon">⏳</div>
-                        <div className="status-text">
-                            <h3 style={{margin:'0 0 5px', fontSize:'16px', color:'#666', textAlign:'left'}}>
-                                等待对方加入...
-                            </h3>
-                            <p style={{margin:0, fontSize:'12px', color:'#999', textAlign:'left'}}>
-                                请确保已将邀请码发给 TA
-                            </p>
+                    // 状态 B: 等待中
+                    <>
+                        <div className="sand-glass">⏳</div>
+                        <div className="status-content">
+                            <h3 style={{color: '#666'}}>等待对方加入...</h3>
+                            <p>请确保已将邀请链接发给 TA</p>
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
 
-            {/* 内联 CSS 样式 */}
             <style jsx>{`
-                .status-card {
+                .invite-card {
                     background: white;
+                    width: 100%;
+                    max-width: 400px;
+                    padding: 30px 25px;
+                    borderRadius: 24px;
+                    boxShadow: 0 10px 40px rgba(0,0,0,0.06);
+                    text-align: center;
+                    margin-bottom: 25px;
+                }
+                
+                .code-box {
+                    background: #F3F4F6;
+                    padding: 15px;
+                    border-radius: 16px;
+                    margin-bottom: 20px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 5px;
+                    border: 1px dashed #ccc;
+                }
+                .code-label { font-size: 12px; color: #888; letter-spacing: 1px; }
+                .code-text { font-size: 28px; color: #333; letter-spacing: 2px; }
+
+                .copy-btn {
+                    width: 100%;
+                    padding: 16px;
+                    background: #10B981;
+                    color: white;
+                    border: none;
+                    border-radius: 50px;
+                    fontSize: 16px;
+                    fontWeight: 600;
+                    cursor: pointer;
+                    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+                    transition: transform 0.2s;
+                }
+                .copy-btn:active { transform: scale(0.98); }
+
+                .hint-text {
+                    font-size: 13px;
+                    color: #999;
+                    margin-top: 15px;
+                    line-height: 1.5;
+                }
+
+                /* 状态条 UI */
+                .status-bar {
+                    width: 100%;
+                    max-width: 400px;
+                    background: rgba(255, 255, 255, 0.8);
+                    backdrop-filter: blur(10px);
                     border-radius: 16px;
                     padding: 15px 20px;
                     display: flex;
                     align-items: center;
                     gap: 15px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-                    border: 1px solid #f0f0f0;
+                    border: 1px solid rgba(0,0,0,0.05);
                     transition: all 0.3s;
                 }
-                .status-card.answering {
+                
+                .status-bar.active {
+                    background: #fff;
                     border: 1px solid #10B981;
-                    background: #F0FDF9;
+                    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.15);
+                    transform: scale(1.02);
                 }
-                .avatar-circle {
-                    width: 40px; height: 40px;
+
+                .avatar {
+                    width: 42px; height: 42px;
                     background: #10B981; color: white;
                     border-radius: 50%;
                     display: flex; align-items: center; justify-content: center;
-                    font-weight: bold; font-size: 18px; flex-shrink: 0;
+                    font-weight: bold; font-size: 18px;
                 }
-                .icon { font-size: 24px; }
-                .status-text { flex: 1; }
-                .pulse-dot {
-                    width: 10px; height: 10px;
-                    background: #10B981; border-radius: 50%;
-                    box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
-                    animation: pulse 1.5s infinite;
+                .sand-glass { font-size: 24px; width: 42px; text-align: center; }
+
+                .status-content { flex: 1; text-align: left; }
+                .status-content h3 { margin: 0 0 4px; font-size: 15px; color: #333; }
+                .status-content p { margin: 0; font-size: 12px; color: #999; }
+                .active .status-content p { color: #10B981; }
+
+                /* 动态波浪动画 */
+                .live-indicator { display: flex; gap: 3px; align-items: flex-end; height: 15px; }
+                .live-indicator span {
+                    width: 3px; background: #10B981; border-radius: 2px;
+                    animation: wave 1s infinite ease-in-out;
                 }
-                @keyframes pulse {
-                    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-                    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-                    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                .live-indicator span:nth-child(1) { height: 60%; animation-delay: 0s; }
+                .live-indicator span:nth-child(2) { height: 100%; animation-delay: 0.1s; }
+                .live-indicator span:nth-child(3) { height: 80%; animation-delay: 0.2s; }
+                
+                @keyframes wave {
+                    0%, 100% { height: 40%; }
+                    50% { height: 100%; }
                 }
             `}</style>
         </div>
@@ -238,141 +248,14 @@ export default function ResultPage() {
   }
 
   // ==========================================
-  // 场景 3: 最终大结局
+  // 场景 3: 最终大结局 (保持不变)
   // ==========================================
   const ai = data.ai_result || {};
-  
-  const radarData = ai.radar ? Object.keys(ai.radar).map(key => ({
-      subject: key,
-      A: ai.radar[key],
-      fullMark: 100
-  })) : [
-      { subject: '沟通', A: 80, fullMark: 100 },
-      { subject: '三观', A: 85, fullMark: 100 },
-      { subject: '激情', A: 90, fullMark: 100 },
-      { subject: '安全感', A: 75, fullMark: 100 },
-      { subject: '成长', A: 88, fullMark: 100 },
-  ];
-
+  const radarData = ai.radar ? Object.keys(ai.radar).map(key => ({ subject: key, A: ai.radar[key], fullMark: 100 })) 
+    : [{ subject: '沟通', A: 80, fullMark: 100 }, { subject: '三观', A: 85, fullMark: 100 }, { subject: '激情', A: 90, fullMark: 100 }, { subject: '安全感', A: 75, fullMark: 100 }, { subject: '成长', A: 88, fullMark: 100 }];
   const cardTitle = ai.title || "默契拍档";
   const cardText = ai.card_text || "你们是彼此最好的镜子，照见最真实的自己。";
   const score = ai.score || 88;
 
   return (
-    <div style={{ 
-        minHeight: '100vh', 
-        background: '#f8f9fa', 
-        paddingBottom: '40px', 
-        fontFamily: 'sans-serif' 
-    }}>
-      
-      {/* 顶部超大分数 */}
-      <div style={{ 
-          background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)', 
-          padding: '40px 20px 80px', 
-          color: 'white', 
-          textAlign: 'center', 
-          borderBottomLeftRadius: '30px', 
-          borderBottomRightRadius: '30px', 
-          boxShadow: '0 10px 20px rgba(255, 107, 107, 0.2)' 
-      }}>
-          <div style={{ fontSize: '14px', opacity: 0.9, letterSpacing: '2px', marginBottom: '5px' }}>AI 契合度检测</div>
-          <h1 style={{ fontSize: '64px', margin: '0', fontWeight: '800', textShadow: '2px 2px 4px rgba(0,0,0,0.1)' }}>{score}%</h1>
-          <div style={{ fontSize: '20px', fontWeight: '600', opacity: 0.95, marginTop: '-10px' }}>{cardTitle}</div>
-      </div>
-
-      <div style={{ maxWidth: '600px', margin: '-60px auto 0', padding: '0 20px' }}>
-          
-          {/* 1. 雷达图 */}
-          <div style={{ 
-              background: 'white', 
-              borderRadius: '24px', 
-              padding: '20px', 
-              boxShadow: '0 10px 30px rgba(0,0,0,0.05)', 
-              marginBottom: '20px' 
-          }}>
-              <h3 style={{ textAlign: 'center', color: '#333', margin: '0 0 10px', fontSize: '16px' }}>📊 多维关系模型</h3>
-              <div style={{ width: '100%', height: '280px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                    <PolarGrid stroke="#eee" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 12 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Radar name="Match" dataKey="A" stroke="#FF6B6B" strokeWidth={3} fill="#FF6B6B" fillOpacity={0.4} />
-                    </RadarChart>
-                </ResponsiveContainer>
-              </div>
-          </div>
-
-          {/* 2. 黑金卡片 */}
-          <div style={{ 
-              background: 'linear-gradient(145deg, #2b2b2b, #1a1a1a)', 
-              borderRadius: '24px', 
-              padding: '35px 25px', 
-              color: '#FFE5B4', 
-              textAlign: 'center', 
-              marginBottom: '20px', 
-              boxShadow: '0 15px 40px rgba(0,0,0,0.3)', 
-              position: 'relative', 
-              border: '1px solid #444' 
-          }}>
-              <div style={{ fontSize: '12px', opacity: 0.6, marginBottom: '20px', letterSpacing: '3px' }}>RELATIONSHIP PERSONA</div>
-              <h2 style={{ 
-                  fontSize: '36px', 
-                  margin: '0 0 20px', 
-                  fontFamily: 'serif', 
-                  background: 'linear-gradient(to right, #FFE5B4, #E1C699)', 
-                  WebkitBackgroundClip: 'text', 
-                  WebkitTextFillColor: 'transparent' 
-              }}>
-                  "{cardTitle}"
-              </h2>
-              <p style={{ 
-                  fontSize: '16px', 
-                  lineHeight: '1.8', 
-                  opacity: 0.9, 
-                  fontStyle: 'italic', 
-                  fontFamily: 'serif', 
-                  margin: '0 auto', 
-                  maxWidth: '80%' 
-              }}>
-                  {cardText}
-              </p>
-              <div style={{ marginTop: '30px', width: '40px', height: '1px', background: '#FFE5B4', margin: '30px auto', opacity: 0.3 }}></div>
-              <div style={{ fontSize: '10px', opacity: 0.4, letterSpacing: '1px' }}>LOVE TEST AI GENERATED</div>
-          </div>
-
-          {/* 3. 深度分析 */}
-          <div style={{ 
-              background: 'white', 
-              borderRadius: '24px', 
-              padding: '25px', 
-              boxShadow: '0 5px 20px rgba(0,0,0,0.03)' 
-          }}>
-              <h3 style={{ borderLeft: '4px solid #FF6B6B', paddingLeft: '12px', color: '#333', fontSize: '18px', marginBottom: '20px', fontWeight: 'bold' }}>💡 深度解读</h3>
-              <div style={{ lineHeight: '1.8', color: '#555', fontSize: '15px', whiteSpace: 'pre-wrap' }}>
-                  {ai.analysis}
-              </div>
-          </div>
-
-          <button 
-             onClick={() => alert("请截图保存上方的黑金卡片哦！")}
-             style={{ 
-                 width: '100%', 
-                 marginTop: '30px', 
-                 padding: '18px', 
-                 background: '#333', 
-                 color: 'white', 
-                 borderRadius: '16px', 
-                 border: 'none', 
-                 fontSize: '16px', 
-                 fontWeight: 'bold', 
-                 cursor: 'pointer', 
-                 marginBottom: '40px' 
-             }}>
-              📸 保存结果卡片
-          </button>
-      </div>
-    </div>
-  );
-}
+    <div
