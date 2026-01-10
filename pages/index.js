@@ -38,7 +38,7 @@ export default function Home() {
           </p>
         </div>
 
-        {/* 核心功能卡片 (代替原来的 Emoji 列表) */}
+        {/* 核心功能卡片 */}
         <div className="features-grid">
           <div className="feature-card">
             <div className="icon-box purple">
@@ -301,3 +301,37 @@ export default function Home() {
           font-weight: 600;
           cursor: pointer;
           color: #333;
+        }
+        .footer-info {
+          font-size: 12px;
+          color: #999;
+          margin-top: 30px;
+        }
+
+        /* 手机适配 */
+        @media (max-width: 600px) {
+          .features-grid {
+            grid-template-columns: 1fr;
+          }
+          .feature-card {
+            display: flex;
+            align-items: center;
+            text-align: left;
+            padding: 15px;
+          }
+          .icon-box {
+            margin: 0 15px 0 0;
+          }
+          .title {
+            font-size: 32px;
+          }
+        }
+        
+        @keyframes float {
+          0% { transform: translate(0, 0) rotate(0deg); }
+          100% { transform: translate(20px, 20px) rotate(10deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
