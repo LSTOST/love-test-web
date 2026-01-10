@@ -294,3 +294,25 @@ export default function Quiz({ initialQuestions }) {
           color: #444;
           cursor: pointer;
           transition: all 0.2s;
+          display: flex;
+          align-items: center;
+        }
+        .option-btn:active { transform: scale(0.98); background: #f9f9f9; }
+        .option-label {
+          font-weight: 800;
+          margin-right: 12px;
+          font-size: 18px;
+        }
+
+        /* 加载样式 */
+        .loading-screen { text-align: center; padding: 50px 30px; }
+        .brain-icon { font-size: 60px; margin-bottom: 30px; animation: bounce 1s infinite; }
+        .loading-text { font-size: 18px; color: #333; min-height: 24px; margin-bottom: 30px; }
+        .loading-bar-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+        .loading-bar-fill { height: 100%; background: linear-gradient(90deg, #FF6B6B, #FF8E53); transition: width 0.3s; }
+
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+      `}</style>
+    </div>
+  );
+}
