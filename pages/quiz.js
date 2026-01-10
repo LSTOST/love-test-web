@@ -31,6 +31,21 @@ export default function Quiz({ initialQuestions }) {
 
   const handleNameSubmit = () => {
     if (!userName.trim()) return alert("请留下你的昵称哦~");
+    
+    // 🔥 新增逻辑：如果是 User B，偷偷通知后端“我进场了”
+    if (isUserB && invite_code) {
+        const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
+        // 使用 fetch 发送通知，但不阻塞用户体验 (Fire and Forget)
+        fetch(`${BACKEND_URL}/notify_join`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                invite_code: invite_code, 
+                name: userName 
+            })
+        }).catch(err => console.error("通知失败:", err));
+    }
+
     setStage('quiz');
   };
 
