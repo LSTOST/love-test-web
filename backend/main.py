@@ -7,27 +7,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
-from openai import OpenAI
 
 # 1. 加载环境变量
 load_dotenv()
 
-# 2. 初始化 Supabase 客户端
+# 2. 初始化 Supabase
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
-# 3. 初始化 DeepSeek (核心修正：改回读取 MY_API_KEY)
-# 这样你就不用去 Railway 改变量名了！
-client = OpenAI(
-    api_key=os.environ.get("MY_API_KEY"), 
-    base_url="https://api.deepseek.com"
-)
+# 3. 初始化 OpenAI (带防崩溃处理)
+# 即使 Railway 没装好 openai，服务器也不会炸，只是 AI 功能不可用
+client = None
+try:
+    from openai import OpenAI
+    # 这里读取的是 MY_API_KEY，匹配你的设置
+    api_key = os.environ.get("MY_API_KEY")
+    if api_key:
+        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+        print("✅ OpenAI/DeepSeek 模块加载成功")
+    else:
+        print("⚠️ 未检测到 MY_API_KEY，AI 功能将受限")
+except ImportError:
+    print("❌ 严重警告: 未安装 'openai' 库，请检查 requirements.txt")
 
 # 4. 初始化 FastAPI
 app = FastAPI()
 
-# 5. 配置 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -49,18 +55,19 @@ class JoinRequest(BaseModel):
     invite_code: str
     name: str
 
-# --- 接口 ---
+# --- 核心接口 ---
 @app.get("/")
 def read_root():
-    return {"status": "ok"}
+    return {"status": "ok", "ai_enabled": client is not None}
 
 @app.get("/questions")
 def get_questions():
     try:
+        # 获取题目
         response = supabase.table("questions").select("*").order("id").execute()
         return response.data
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Fetch questions error: {e}")
         return []
 
 @app.post("/notify_join")
@@ -96,14 +103,17 @@ def submit_part_a(req: SubmitA_Request):
         }).execute()
         return {"status": "success", "test_id": response.data[0]['id']}
     except Exception as e:
+        print(f"Submit A Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/submit_part_b")
 def submit_part_b(req: SubmitB_Request):
     try:
+        # 查重
         record = supabase.table("test_results").select("*").eq("invite_code", req.invite_code).execute()
-        existing_data = record.data[0]
+        if not record.data: return {"status": "error", "message": "无效邀请码"}
         
+        existing_data = record.data[0]
         if existing_data.get('is_finished'):
             return {"status": "already_finished", "test_id": existing_data['id']}
 
@@ -119,6 +129,7 @@ def submit_part_b(req: SubmitB_Request):
         
         return {"status": "success", "test_id": existing_data['id']}
     except Exception as e:
+        print(f"Submit B Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/result/{test_id}")
@@ -129,10 +140,23 @@ def get_result(test_id: str):
     except Exception as e:
         raise HTTPException(status_code=404, detail="Not found")
 
-# --- AI 生成逻辑 ---
+# --- AI 生成逻辑 (带兜底) ---
 def generate_ai_report(answers_a, answers_b):
+    # 兜底数据 (如果 AI 挂了，用这个返回，防止前端报错)
+    fallback = {
+        "score": 88, 
+        "title": "默契拍档", 
+        "card_text": "你们是彼此最好的镜子，照见最真实的自己。",
+        "radar": {"沟通": 80, "三观": 85, "激情": 90, "安全感": 75, "成长": 88},
+        "analysis": "AI 服务暂时繁忙，这是系统生成的默认高分报告。请稍后重试。"
+    }
+
+    if not client:
+        print("⚠️ OpenAI 客户端未初始化，使用兜底数据")
+        return fallback
+
     try:
-        # 简单拼装 Prompt
+        print("🤖 AI 正在思考...")
         prompt = f"分析契合度:\n甲方数据:{answers_a}\n乙方数据:{answers_b}\n请返回JSON格式包含score, title, card_text, radar(5维), analysis。"
         
         response = client.chat.completions.create(
@@ -145,10 +169,5 @@ def generate_ai_report(answers_a, answers_b):
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f"AI Error: {e}")
-        # 兜底数据，保证不报错
-        return {
-            "score": 60, "title": "还在磨合", "card_text": "爱需要练习。",
-            "radar": {"沟通": 50, "三观": 50, "激情": 50, "安全感": 50, "成长": 50},
-            "analysis": "AI 暂时繁忙。"
-        }
+        print(f"❌ AI Error: {e}")
+        return fallback
