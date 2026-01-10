@@ -1,44 +1,48 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
-export default function Quiz() {
+// --- 核心优化：在服务器构建时就把题目抓好 ---
+export async function getStaticProps() {
+  const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
+  
+  try {
+    const res = await fetch(`${BACKEND_URL}/questions`);
+    const questions = await res.json();
+    
+    return {
+      props: {
+        initialQuestions: questions, // 把题目作为 props 传给页面
+      },
+      // ISR (增量静态再生): 每隔 60 秒尝试更新一次题目
+      // 这样你改了数据库，不用重新部署，过一分钟用户也能看到新题
+      revalidate: 60, 
+    };
+  } catch (error) {
+    console.error("构建时拉取题目失败:", error);
+    return {
+      props: {
+        initialQuestions: [],
+      },
+    };
+  }
+}
+
+export default function Quiz({ initialQuestions }) { // 这里直接接收题目
   const router = useRouter();
   const { invite_code } = router.query; 
 
-  // --- 状态管理 ---
-  const [questions, setQuestions] = useState([]); // 题目变为空数组，等待加载
+  // 直接使用预加载好的题目，不再需要 loading 状态
+  const [questions, setQuestions] = useState(initialQuestions || []);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
-  
-  // 页面初始化加载状态
-  const [isQuestionsLoading, setIsQuestionsLoading] = useState(true);
-  
   const [isUserB, setIsUserB] = useState(false);
 
   // --- 动画状态 ---
   const [loadingText, setLoadingText] = useState("正在建立加密连接...");
   const [loadingProgress, setLoadingProgress] = useState(0);
 
-  const BACKEND_URL = 'https://love-test-web-production.up.railway.app'; 
-
-  // --- 核心改动：从后端拉取题目 ---
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/questions`)
-      .then(res => res.json())
-      .then(data => {
-        // 简单处理：把数据库的 options (JSONB) 格式化一下确保能用
-        // 数据库存的是：[{"label":"A", "text":"..."}, ...]
-        setQuestions(data);
-        setIsQuestionsLoading(false);
-      })
-      .catch(err => {
-        console.error("题目加载失败:", err);
-        alert("题目加载失败，请刷新页面");
-      });
-  }, []);
-
-  // 身份识别逻辑
+  // 这里的 useEffect 只处理 User B 的身份识别，不再负责拉题
   useEffect(() => {
     if (router.isReady && invite_code) {
         setIsUserB(true);
@@ -51,6 +55,7 @@ export default function Quiz() {
       "正在比对 16 种人格维度的契合度...", "检测到深层价值观共鸣...",
       "正在生成情感建议与相处之道...", "报告生成完毕..."
   ];
+
   useEffect(() => {
       if (loading) {
           let step = 0;
@@ -65,11 +70,9 @@ export default function Quiz() {
       }
   }, [loading]);
 
-  // --- 逻辑处理 ---
   const handleOptionSelect = async (option) => {
-    // option 现在是数据库里的结构: {label: "A", text: "...", score: ...}
     const currentQuestion = questions[currentStep];
-    const newAnswers = { ...answers, [currentQuestion.id]: option.label }; // 用题目ID作为key更稳健
+    const newAnswers = { ...answers, [currentQuestion.id]: option.label };
     setAnswers(newAnswers);
 
     if (currentStep < questions.length - 1) {
@@ -82,6 +85,7 @@ export default function Quiz() {
   const submitToBackend = async (finalAnswers) => {
     setLoading(true);
     setLoadingText(loadingMessages[0]);
+    const BACKEND_URL = 'https://love-test-web-production.up.railway.app';
 
     try {
       let url, body;
@@ -116,9 +120,9 @@ export default function Quiz() {
     }
   };
 
-  // --- 渲染逻辑 ---
-  if (isQuestionsLoading) {
-      return <div style={{padding:'50px', textAlign:'center', color:'#888'}}>⏳ 正在从云端加载题库...</div>;
+  // 如果题目还没加载出来 (极少情况)，给个兜底
+  if (!questions || questions.length === 0) {
+      return <div style={{padding:'50px', textAlign:'center', color:'#888'}}>⏳ 正在准备题目...</div>;
   }
 
   const currentQuestion = questions[currentStep];
@@ -155,7 +159,6 @@ export default function Quiz() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {/* 注意：这里的 options 是从数据库读出来的 */}
             {currentQuestion.options.map((option, index) => (
               <button
                 key={index}
