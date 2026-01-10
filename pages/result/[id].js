@@ -90,72 +90,98 @@ export default function ResultPage() {
   // ==========================================
   // 场景 2: 等待对方
   // ==========================================
-  if (data.payment_status === 'paid' && !data.is_finished) {
-      return (
-        <div style={{
-            padding: '40px 20px', 
-            textAlign: 'center', 
-            fontFamily: 'sans-serif', 
-            maxWidth: '600px', 
-            margin: '0 auto'
-        }}>
-            <div style={{ marginTop: '30px', marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '28px', color: '#333' }}>🔓 解锁成功！</h1>
-                <p style={{ color: '#666', fontSize: '16px' }}>只差最后一步啦</p>
+{/* 智能状态监控区 */}
+            <div style={{ marginTop: '50px', width: '100%' }}>
+                {data.partner_name ? (
+                    // 状态 A: 对方已经开始答题了 (检测到了 partner_name)
+                    <div className="status-card answering">
+                        <div className="avatar-circle">
+                             {/* 提取对方名字首字 */}
+                             {data.partner_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="status-text">
+                            <h3 style={{margin:'0 0 5px', fontSize:'16px', color:'#333'}}>
+                                {data.partner_name} 正在认真答题中...
+                            </h3>
+                            <p style={{margin:0, fontSize:'12px', color:'#10B981'}}>
+                                ⚡️ 对方已上线，请保持页面开启
+                            </p>
+                        </div>
+                        <div className="pulse-dot"></div>
+                    </div>
+                ) : (
+                    // 状态 B: 对方还没点开链接
+                    <div className="status-card waiting">
+                        <div className="icon">⏳</div>
+                        <div className="status-text">
+                            <h3 style={{margin:'0 0 5px', fontSize:'16px', color:'#666'}}>
+                                等待对方加入...
+                            </h3>
+                            <p style={{margin:0, fontSize:'12px', color:'#999'}}>
+                                请确保已将链接/邀请码发给 TA
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div style={{ 
-                background: 'white', 
-                padding: '30px', 
-                borderRadius: '20px', 
-                boxShadow: '0 8px 30px rgba(0,0,0,0.08)', 
-                border: '1px solid #f0f0f0' 
-            }}>
-                <p style={{ fontSize: '14px', color: '#999', marginBottom: '10px' }}>邀请对方完成测试，即可查看合盘报告</p>
+            {/* 配套 CSS (可以直接加在文件底部的 style jsx 里，或者写在 style 标签里) */}
+            <style jsx>{`
+                /* ...之前的样式... */
                 
-                <div style={{ 
-                    background: '#F5F7FA', 
-                    padding: '15px', 
-                    borderRadius: '12px', 
-                    marginBottom: '25px', 
-                    letterSpacing: '2px' 
-                }}>
-                    <span style={{ color: '#666', fontSize: '12px' }}>专属邀请码：</span>
-                    <strong style={{ fontSize: '24px', color: '#333', marginLeft: '10px' }}>{data.invite_code}</strong>
-                </div>
-
-                <button 
-                    onClick={handleCopyInvite}
-                    style={{ 
-                        width: '100%', 
-                        padding: '16px', 
-                        background: '#25D366', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '12px', 
-                        fontSize: '16px', 
-                        fontWeight: 'bold', 
-                        cursor: 'pointer', 
-                        boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)'
-                    }}
-                >
-                    🚀 复制链接发给 TA
-                </button>
+                .status-card {
+                    background: white;
+                    border-radius: 16px;
+                    padding: 15px 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+                    border: 1px solid #f0f0f0;
+                    transition: all 0.3s;
+                    text-align: left; /* 强制左对齐 */
+                }
                 
-                <p style={{ fontSize: '12px', color: '#ccc', marginTop: '15px' }}>
-                    对方点击链接即可直接开始，无需手动输入邀请码
-                </p>
-            </div>
+                /* 正在答题的高亮状态 */
+                .status-card.answering {
+                    border: 1px solid #10B981;
+                    background: #F0FDF9;
+                }
 
-            <div style={{ marginTop: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                <div style={{ fontSize: '24px' }}>⏳</div>
-                <p style={{ color: '#FF6B6B', fontSize: '14px', fontWeight: '500' }}>
-                    正在等待对方提交... 
-                </p>
-            </div>
-        </div>
-      );
-  }
+                .avatar-circle {
+                    width: 40px;
+                    height: 40px;
+                    background: #10B981;
+                    color: white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                    font-size: 18px;
+                    flex-shrink: 0;
+                }
+
+                .icon { font-size: 24px; }
+                
+                .status-text { flex: 1; }
+
+                /* 呼吸灯动画点 */
+                .pulse-dot {
+                    width: 10px;
+                    height: 10px;
+                    background: #10B981;
+                    border-radius: 50%;
+                    box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+                    animation: pulse 1.5s infinite;
+                }
+
+                @keyframes pulse {
+                    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+                    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                }
+            `}</style>
 
   // ==========================================
   // 场景 3: 最终大结局
