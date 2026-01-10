@@ -115,20 +115,35 @@ def submit_part_a(request: SubmitA_Request):
         raise HTTPException(500, str(e))
 
 # --- 阶段 2: 模拟支付 (实际项目中这里接微信支付回调) ---
+# ---------------------------------------------------------
+# 修复：Mock 支付接口 (开发测试专用)
+# ---------------------------------------------------------
+# 注意：前端发的是 POST 请求，这里必须用 @app.post
 @app.post("/mock_pay")
-def mock_pay(request: PayRequest):
-    if not supabase: raise HTTPException(500, "DB Error")
+def mock_pay(test_id: str):
+    """
+    接收 test_id，模拟支付成功，生成邀请码
+    """
+    print(f"收到模拟支付请求: {test_id}") # 打印日志，方便在 Railway 查看
     
-    # 1. 生成邀请码
-    code = generate_invite_code()
-    
-    # 2. 更新数据库：设为已支付，写入邀请码
-    supabase.table("test_results").update({
-        "payment_status": "paid",
-        "invite_code": code
-    }).eq("id", request.test_id).execute()
-    
-    return {"status": "paid", "invite_code": code}
+    try:
+        # 1. 生成 6 位随机邀请码
+        import random, string
+        invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        
+        # 2. 更新数据库状态
+        # 注意：.execute() 是必须的，否则不执行
+        supabase.table("test_results").update({
+            "payment_status": "paid",
+            "invite_code": invite_code
+        }).eq("id", test_id).execute()
+        
+        print(f"✅ 支付成功，邀请码已生成: {invite_code}")
+        return {"status": "success", "invite_code": invite_code}
+        
+    except Exception as e:
+        print(f"❌ 支付逻辑出错: {e}")
+        return {"status": "error", "message": str(e)}
 
 # --- 阶段 3: 用户 B 提交 (核心！合并数据 + AI 分析) ---
 @app.post("/submit_part_b")
